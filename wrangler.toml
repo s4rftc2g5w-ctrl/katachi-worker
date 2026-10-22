@@ -1,0 +1,10 @@
+name = "katachi"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+[[kv_namespaces]]
+binding = "STORE"
+id = "b534affa9d044d12b7b4dd7d84e46fb7"
+
+[triggers]
+crons = ["*/10 * * * *", "0 * * * *", "30 11 * * *", "0 1 * * *"]
