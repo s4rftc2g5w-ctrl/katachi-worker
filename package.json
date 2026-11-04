@@ -4,6 +4,6 @@
   "version": "1.5.80",
   "scripts": {
     "build": "node scripts/build-worker.cjs",
-    "verify": "node scripts/build-worker.cjs && node scripts/verify-structure.cjs && node scripts/verify-ui-scripts.cjs && node scripts/verify-auth-contract.cjs && node scripts/verify-unified-search.cjs && node scripts/verify-storage-migration.cjs && node --check build/worker.js"
+    "verify": "node scripts/build-worker.cjs && node scripts/verify-structure.cjs && node scripts/verify-ui-scripts.cjs && node scripts/verify-auth-contract.cjs && node scripts/verify-unified-search.cjs && node scripts/verify-storage-migration.cjs && node scripts/verify-candidate-ledger.cjs && node --check build/worker.js"
   }
 }

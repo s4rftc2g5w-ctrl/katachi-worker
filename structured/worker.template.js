@@ -178,6 +178,8 @@ const json = (o, s = 200) =>
     headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
   });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+__MODULE_candidateLedger__
+
 const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9\u3040-\u30ff\u4e00-\u9fff]/g, '');
 
 const ACC_WORDS = ['ケース', 'カバー', 'イヤーチップ', 'イヤーピース', 'イヤーパッド', 'フィルム', '保護', 'クリーナー', 'ケーブル', '充電器', 'スタンド', 'ホルダー', 'ストラップ', '交換用', '互換', 'ステッカー', 'スキン', 'ポーチ', 'ガラス', '部品', '部品コード', 'パーツ', 'フィルター', 'フタ', 'ふた', '蓋', 'パッキン', '替刃', '替え刃', 'ノズル', 'アタッチメント', '説明書', 'マニュアル', '専用袋', '巾着'];

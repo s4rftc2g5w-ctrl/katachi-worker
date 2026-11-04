@@ -9,6 +9,7 @@ for (const a of baseline.assets) {
   if (hash !== a.sha256) throw Error(a.file+' differs from the fixed v1.5.80 baseline');
 }
 const template = fs.readFileSync(path.join(root,'worker.template.js'),'utf8');
+if (template.split('__MODULE_candidateLedger__').length !== 2) throw Error('Missing or duplicate candidate ledger placeholder');
 for (const a of baseline.assets) {
   const token = '__ASSET_'+a.name+'__';
   if (template.split(token).length !== 2) throw Error('Missing or duplicate placeholder '+token);
@@ -17,6 +18,9 @@ for (const a of baseline.assets) {
 const builtPath = path.resolve('build','worker.js');
 if (fs.existsSync(builtPath)) {
   let rebuiltTemplate = fs.readFileSync(builtPath,'utf8');
+  const moduleContent = fs.readFileSync(path.join(root,'server/candidate-ledger.js'),'utf8');
+  if (rebuiltTemplate.split(moduleContent).length !== 2) throw Error('Built worker does not contain candidate ledger module');
+  rebuiltTemplate = rebuiltTemplate.replace(moduleContent,'__MODULE_candidateLedger__');
   for (const a of baseline.assets) {
     const content = fs.readFileSync(path.join(root,a.file),'utf8');
     const literal = JSON.stringify(content);
