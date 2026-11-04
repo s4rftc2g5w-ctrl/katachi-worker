@@ -1,5 +1,10 @@
+/build/
 node_modules/
 .wrangler/
+*.zip
 *.orig.js
 html.html
 html.new.html
+katachi-worker-v1.5.81.js
+candidate-ledger.test.cjs
+WORK_STATUS.md

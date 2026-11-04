@@ -1,0 +1,1114 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0F5C4D">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="型落ち・入札 統合版">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="/unified-manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<title>katachi 統合版</title>
+<meta name="katachi-unified-version" content="1.5.80">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+/* Layout: 左に探す・相場・条件の入力、右に上限額と出品の判定。スマホは1列で、下に上限額の帯を固定。 */
+:root{
+  --bg:#EDF1EF; --surface:#FFFFFF; --ink:#15211E; --muted:#52625C; --line:#C9D4CF; --field:#F5F8F6;
+  --accent:#0F5C4D; --accent-ink:#FFFFFF; --tint:#E3EEE9;
+  --ok:#1B7A45; --warn:#98610A; --ng:#B0343F;
+  --body:"BIZ UDPGothic","Hiragino Sans","Yu Gothic",Meiryo,sans-serif;
+  --head:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",Meiryo,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F1614; --surface:#18221F; --ink:#E4ECE8; --muted:#92A39B; --line:#2B3833; --field:#121A17;
+    --accent:#5FC2A5; --accent-ink:#0B1612; --tint:#1C2C27;
+    --ok:#5CC48A; --warn:#E0B25A; --ng:#E27A87; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F1614; --surface:#18221F; --ink:#E4ECE8; --muted:#92A39B; --line:#2B3833; --field:#121A17;
+  --accent:#5FC2A5; --accent-ink:#0B1612; --tint:#1C2C27;
+  --ok:#5CC48A; --warn:#E0B25A; --ng:#E27A87; color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+body{
+  margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); font-size:15px; line-height:1.65;
+  padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:20px 96px; font-variant-numeric:tabular-nums;
+}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.wrap{max-width:980px;margin:0 auto}
+.head{padding:4px 0 16px}
+h1{font-family:var(--head);font-weight:900;font-size:26px;letter-spacing:.02em;margin:0;text-wrap:balance}
+.version{display:inline-block;vertical-align:middle;margin-left:7px;border:1px solid var(--line);border-radius:999px;padding:1px 7px;font-family:var(--body);font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.04em}
+.watch-input{width:100%;min-height:76px;resize:vertical;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:5px;padding:9px 10px;font-size:16px}
+.watch-list{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+.watch-row{border-top:1px solid var(--line);padding-top:10px}.watch-row:first-child{border-top:0;padding-top:0}
+.watch-name{font-weight:700;margin-bottom:5px}.watch-links{display:flex;flex-wrap:wrap;gap:6px}
+.discover-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.discover-list{display:grid;grid-template-columns:1fr;gap:8px;margin-top:12px}
+@media (min-width:720px){.discover-list{grid-template-columns:1fr 1fr}}
+.discover-item{border:1px solid var(--line);border-radius:5px;padding:10px;background:var(--field);min-width:0}
+.discover-item strong{display:block;font-size:14px;overflow-wrap:anywhere}
+.discover-meta{font-size:12px;color:var(--muted);margin:3px 0 7px}
+.auto-judge{display:inline-block;margin:2px 0 8px;border:1px solid currentColor;border-radius:999px;padding:3px 8px;font-size:12px;font-weight:700}
+.auto-judge.ok{color:var(--ok)}.auto-judge.hold{color:var(--warn)}.auto-judge.skip{color:var(--ng)}
+.discover-actions{display:flex;flex-wrap:wrap;gap:6px}
+.discover-status{margin:10px 0 0;font-size:13px;color:var(--muted)}
+.discover-status[data-kind="error"]{color:var(--ng)}
+.lede{margin:6px 0 0;color:var(--muted);max-width:42em}
+.layout{display:grid;grid-template-columns:1fr;gap:14px;align-items:start}
+.col{display:flex;flex-direction:column;gap:14px;min-width:0}
+@media (min-width:860px){.layout{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:16px;min-width:0}
+.card h2{font-family:var(--head);font-weight:700;font-size:17px;margin:0 0 4px;display:flex;align-items:baseline;gap:8px}
+.card h2 .step{font-size:12px;font-weight:700;color:var(--accent-ink);background:var(--accent);border-radius:3px;padding:0 6px;line-height:1.6}
+.sub{margin:0 0 12px;font-size:13px;color:var(--muted)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid.three{grid-template-columns:repeat(3,1fr)}
+.full{grid-column:1/-1}
+@media (max-width:420px){.grid.three{grid-template-columns:1fr 1fr}}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);min-width:0}
+label.f input,label.f select{font-size:16px;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:5px;padding:9px 10px;width:100%;min-width:0}
+.links{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.links+.group{margin-top:14px}
+.group{font-size:12px;color:var(--muted);margin:14px 0 0;font-weight:700;letter-spacing:.06em}
+a.lk{display:inline-block;text-decoration:none;border:1px solid var(--accent);color:var(--accent);border-radius:5px;padding:7px 11px;font-size:13px;font-weight:700}
+a.lk[aria-disabled="true"]{opacity:.4;pointer-events:none}
+.check{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin-top:10px}
+.check input{width:18px;height:18px;accent-color:var(--accent);flex:none}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+@media (max-width:420px){.stats{grid-template-columns:1fr 1fr}}
+.stat{background:var(--field);border:1px solid var(--line);border-radius:5px;padding:8px 10px}
+.stat small{display:block;font-size:11px;color:var(--muted)}
+.stat b{font-size:17px}
+.stat.key{background:var(--tint);border-color:var(--accent)}
+.bid{display:flex;flex-direction:column;gap:2px;padding:4px 0 12px}
+.bid .lbl{font-size:12px;color:var(--muted)}
+.bid .big{font-family:var(--head);font-weight:900;font-size:42px;line-height:1.15}
+.bid .big.off{color:var(--muted)}
+.bid .note{font-size:13px;color:var(--muted)}
+table.calc{width:100%;border-collapse:collapse;font-size:14px}
+table.calc td{padding:6px 0;border-bottom:1px solid var(--line)}
+table.calc td:last-child{text-align:right;white-space:nowrap}
+table.calc tr.sum td{font-weight:700}
+table.calc tr.pick td{font-weight:700;color:var(--accent)}
+.verdict{display:flex;align-items:center;gap:10px;margin:12px 0 4px;font-family:var(--head);font-weight:900;font-size:22px}
+.dot{width:14px;height:14px;border-radius:50%;background:var(--muted);flex:none}
+.verdict[data-lv="ok"] .dot{background:var(--ok)}
+.verdict[data-lv="hold"] .dot{background:var(--warn)}
+.verdict[data-lv="skip"] .dot{background:var(--ng)}
+.verdict[data-lv="ok"]{color:var(--ok)}
+.verdict[data-lv="hold"]{color:var(--warn)}
+.verdict[data-lv="skip"]{color:var(--ng)}
+.verdict[data-lv="empty"]{color:var(--muted)}
+ul.reasons{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+ul.reasons li{display:flex;gap:8px;align-items:flex-start;font-size:14px}
+.pill{flex:none;font-size:11px;font-weight:700;border:1px solid currentColor;border-radius:3px;padding:0 6px;margin-top:3px;line-height:1.6}
+.pill.ok{color:var(--ok)} .pill.warn{color:var(--warn)} .pill.ng{color:var(--ng)}
+.checks{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.checks label{display:flex;gap:10px;align-items:flex-start;font-size:14px}
+.checks input{width:18px;height:18px;margin-top:3px;accent-color:var(--accent);flex:none}
+.btn{border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);border-radius:5px;padding:9px 16px;font-weight:700;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn.small{padding:6px 10px;font-size:13px}
+.acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.sample{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;background:var(--tint);border-left:4px solid var(--warn);border-radius:4px;padding:10px 12px;margin-bottom:14px;font-size:13px}
+.saved .row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;padding:10px 0;border-top:1px solid var(--line)}
+.saved .row:first-of-type{border-top:0}
+.saved .nm{font-weight:700;overflow-wrap:anywhere}
+.saved .meta{font-size:12px;color:var(--muted)}
+.saved .btns{display:flex;gap:6px;align-items:center}
+.saved-tools{display:flex;gap:6px;overflow-x:auto;padding:2px 0 10px;scrollbar-width:thin}
+.filter-btn{white-space:nowrap;border:1px solid var(--line);background:var(--field);color:var(--ink);border-radius:999px;padding:6px 10px;font-size:12px;cursor:pointer}
+.filter-btn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:700}
+.status-select{max-width:112px;background:var(--field);border:1px solid var(--line);border-radius:5px;padding:6px;font-size:13px}
+.profit-warning{display:inline-block;margin-top:4px;color:var(--ng);font-weight:700}
+.saved .row.low-profit{border-left:4px solid var(--ng);padding-left:10px;background:color-mix(in srgb,var(--ng) 7%,transparent)}
+@media (max-width:520px){.saved .row{grid-template-columns:1fr}.saved .btns{justify-content:flex-start;flex-wrap:wrap}}
+.empty{color:var(--muted);font-size:14px;border:1px dashed var(--line);border-radius:5px;padding:16px;text-align:center}
+textarea.out{width:100%;min-height:90px;font-size:13px;background:var(--field);border:1px solid var(--line);border-radius:5px;padding:8px;margin-top:8px}
+.sync-grid{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end}
+.sync-status{margin:10px 0 0;font-size:13px;color:var(--muted)}
+.sync-status[data-kind="ok"]{color:var(--ok)}
+.sync-status[data-kind="error"]{color:var(--ng)}
+.sync-status[data-kind="warn"]{color:var(--warn)}
+@media (max-width:560px){.sync-grid{grid-template-columns:1fr}.sync-grid .btn{width:100%}}
+.foot{font-size:12px;color:var(--muted);margin:16px 0 0}
+.bar{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:1px solid var(--line);
+  padding:10px max(16px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.bar-in{max-width:980px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.bar .v{font-family:var(--head);font-weight:900;font-size:22px}
+.bar .t{font-size:12px;color:var(--muted)}
+@media (min-width:860px){.bar{display:none} body{padding-bottom:32px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+<style id="unified-layout">
+.unified-nav{display:flex;gap:8px;position:sticky;top:0;z-index:30;background:var(--bg);padding:12px 0}
+.unified-nav button{flex:1;padding:12px 6px;border:1px solid var(--line);border-radius:8px;background:var(--surface);cursor:pointer}
+.unified-nav button[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
+.unified-hidden{display:none!important}.unified-note{font-size:13px;color:var(--muted)}
+</style></head>
+<body>
+<div class="wrap">
+<header class="head">
+  <h1>katachi 統合版 <span class="version" aria-label="バージョン 1.5.80">1.5.80</span></h1>
+  <p class="lede">ヤフオクやフリマで見つけた新品を、メルカリの売り切れ相場から逆算した上限額で判断します。上限を超える入札はしません。</p>
+</header>
+
+<div class="sample" id="sample">
+  <span>いま入っている数字は<b>例</b>です。自分の商品に書き換えるか、消してから始めてください。</span>
+  <button class="btn small ghost" type="button" id="clearSample">例を消す</button>
+</div>
+
+<div class="unified-note"><p>2026年10月30日更新・バージョン1.5.80です。</p><p>サーバー保存分の移行・照合済み（型落ち0件／入札ノート1件）。旧アプリのデータも残しています。</p><p>PC・iPhone共通の統合版です。</p></div><nav class="unified-nav" aria-label="主な操作"><button type="button" data-screen="find" aria-selected="true">① 候補</button><button type="button" data-screen="judge" aria-selected="false">② 判定</button><button type="button" data-screen="saved" aria-selected="false">③ 保存・同期</button></nav><section class="card" aria-labelledby="hwatch" style="margin-bottom:14px">
+  <h2 id="hwatch">商品巡回</h2>
+  <p class="sub">探したい商品を1行ずつ登録すると、ヤフオク（終了が近い順）・ラクマ・Yahoo!フリマ・ハードオフをまとめて巡回できます。検索結果を確認したら、商品名と価格を下の判定へ入れてください。</p>
+  <textarea id="watchKeywords" class="watch-input" placeholder="例：&#10;Nintendo Switch OLED 新品&#10;AirPods Pro 第2世代 未開封"></textarea>
+  <div class="acts">
+    <button class="btn small" type="button" id="saveWatches">検索リストを更新</button>
+    <button class="btn small ghost" type="button" id="useCurrentKeyword">現在の商品名を追加</button>
+  </div>
+  <div id="watchList" class="watch-list"></div>
+</section>
+
+<section class="card" aria-labelledby="hdiscover" style="margin-bottom:14px">
+  <div class="discover-head">
+    <div>
+      <h2 id="hdiscover">自動で見つけた候補</h2>
+      <p class="sub" style="margin-bottom:0">型落ちアプリのKeepa・楽天・Yahoo!データから候補を読み込みます。ラクマ・Yahoo!フリマ・ハードオフで未使用品を確認できます。</p>
+    </div>
+    <div class="acts">
+      <button class="btn small" type="button" id="loadDiscover">候補を読み込む</button>
+    </div>
+  </div>
+  <p class="discover-status" id="discoverStatus" role="status" aria-live="polite">まだ読み込んでいません。</p>
+  <div class="discover-list" id="discoverList"></div>
+</section>
+
+<main class="layout">
+  <div class="col">
+    <section class="card" aria-labelledby="h1s">
+      <h2 id="h1s"><span class="step">1</span>探す</h2>
+      <p class="sub">型番か商品名を入れて、各サイトの検索を開きます。ヤフオクはストア出品・新品に絞ると安全です。</p>
+      <label class="f full">型番・商品名
+        <input id="kw" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="例: 電気ひざ掛け HK-123">
+      </label>
+      <label class="check"><input id="suf" type="checkbox" checked>探す検索には「新品未開封」を足す</label>
+      <p class="group">安く出ている新品を探す</p>
+      <div class="links">
+        <a class="lk" id="l-yauc" target="_blank" rel="noopener noreferrer">ヤフオク（終了が近い順）</a>
+        <a class="lk" id="l-ypay" target="_blank" rel="noopener noreferrer">PayPayフリマ</a>
+        <a class="lk" id="l-rakuma" target="_blank" rel="noopener noreferrer">ラクマ</a>
+        <a class="lk" id="l-mon" target="_blank" rel="noopener noreferrer">メルカリ（出品中・新品）</a>
+        <a class="lk" id="l-hoff" target="_blank" rel="noopener noreferrer">ハードオフ（オフモール）</a>
+      </div>
+      <p class="group">相場を確認する</p>
+      <div class="links">
+        <a class="lk" id="l-msold" target="_blank" rel="noopener noreferrer">メルカリ（売り切れ・新品）</a>
+        <a class="lk" id="l-yclosed" target="_blank" rel="noopener noreferrer">ヤフオク（落札相場）</a>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="h2s">
+      <h2 id="h2s"><span class="step">2</span>売り切れ相場</h2>
+      <p class="sub">メルカリの売り切れ（新品）から、直近の価格を3〜5件、送料込みで入れます。</p>
+      <div class="grid three" id="solds">
+        <label class="f">1件目<input id="sold0" type="number" inputmode="numeric" min="0" placeholder="円"></label>
+        <label class="f">2件目<input id="sold1" type="number" inputmode="numeric" min="0" placeholder="円"></label>
+        <label class="f">3件目<input id="sold2" type="number" inputmode="numeric" min="0" placeholder="円"></label>
+        <label class="f">4件目<input id="sold3" type="number" inputmode="numeric" min="0" placeholder="円"></label>
+        <label class="f">5件目<input id="sold4" type="number" inputmode="numeric" min="0" placeholder="円"></label>
+        <label class="f">直近30日の件数<input id="n30" type="number" inputmode="numeric" min="0" placeholder="任意"></label>
+      </div>
+      <div class="stats">
+        <div class="stat"><small>入力件数</small><b id="st-n">0件</b></div>
+        <div class="stat"><small>中央値</small><b id="st-med">—</b></div>
+        <div class="stat"><small>下位25%</small><b id="st-q">—</b></div>
+        <div class="stat key"><small>安全売価</small><b id="st-safe">—</b></div>
+      </div>
+      <p class="sub" style="margin:10px 0 0">安全売価は、5件以上なら中央値と下位25%の低い方、4件以下なら最安値です。この価格で売れる前提で上限を出します。</p>
+    </section>
+
+    <section class="card" aria-labelledby="h3s">
+      <h2 id="h3s"><span class="step">3</span>売る条件</h2>
+      <p class="sub">手数料と送料は目安です。出品前に最新の料金を確認してください。</p>
+      <div class="grid">
+        <label class="f">販売先
+          <select id="chan"><option value="10">メルカリ</option><option value="5">Yahoo!フリマ</option></select>
+        </label>
+        <label class="f">販売手数料（%）<input id="fee" type="number" inputmode="decimal" min="0" max="99" value="10"></label>
+        <label class="f full">大きさ（メルカリ便の目安）
+          <select id="size">
+            <option value="210">ネコポス ¥210</option>
+            <option value="450">宅急便コンパクト ¥450</option>
+            <option value="750">宅急便60 ¥750</option>
+            <option value="850" selected>宅急便80 ¥850</option>
+            <option value="1050">宅急便100 ¥1,050</option>
+            <option value="1200">宅急便120 ¥1,200</option>
+            <option value="1450">宅急便140 ¥1,450</option>
+            <option value="1700">宅急便160 ¥1,700</option>
+          </select>
+        </label>
+        <label class="f">販売送料（円）<input id="ship" type="number" inputmode="numeric" min="0" value="850"></label>
+        <label class="f">梱包費（円）<input id="pack" type="number" inputmode="numeric" min="0" value="70"></label>
+        <label class="f">最低利益（円）<input id="minP" type="number" inputmode="numeric" min="0" value="1000"></label>
+        <label class="f">最低利益率（%）<input id="minM" type="number" inputmode="decimal" min="0" max="99" value="15"></label>
+        <label class="f full">中央値で売れた場合の最低利益（円）<input id="minMed" type="number" inputmode="numeric" min="0" value="1500"></label>
+      </div>
+    </section>
+  </div>
+
+  <div class="col">
+    <section class="card" aria-labelledby="h4s">
+      <h2 id="h4s"><span class="step">4</span>入札の上限</h2>
+      <div class="bid" aria-live="polite">
+        <span class="lbl">仕入れ総額の上限（落札額＋送料）</span>
+        <span class="big off" id="r-total">—</span>
+        <span class="note" id="r-bid">売り切れ相場を入れると計算します</span>
+      </div>
+      <table class="calc" id="calc"></table>
+    </section>
+
+    <section class="card" aria-labelledby="h5s">
+      <h2 id="h5s"><span class="step">5</span>見つけた出品を判定</h2>
+      <p class="sub">気になる出品の価格と送料を入れ、下の確認を済ませてから入札します。</p>
+      <div class="grid">
+        <label class="f">現在価格または即決価格（円）<input id="lot" type="number" inputmode="numeric" min="0" placeholder="円" value="1480"></label>
+        <label class="f">仕入れ側の送料（円）<input id="lotShip" type="number" inputmode="numeric" min="0" placeholder="送料込みなら0" value="0"></label>
+      </div>
+      <div class="verdict" id="verdict" data-lv="empty"><span class="dot"></span><span id="v-text">未判定</span></div>
+      <p class="sub" id="v-sub" style="margin:0">価格を入れると判定します</p>
+      <ul class="reasons" id="reasons"></ul>
+      <p class="group">入札前の確認</p>
+      <div class="checks" id="checks">
+        <label><input type="checkbox" id="c0">出品者がストア、または評価が多く悪い評価が少ない</label>
+        <label><input type="checkbox" id="c1">写真が実物で、説明に「新品未開封」とある</label>
+        <label><input type="checkbox" id="c2">型番・色・個数が、相場を調べた商品と同じ</label>
+        <label><input type="checkbox" id="c3">付属品と保証書の有無が、説明に書いてある</label>
+        <label><input type="checkbox" id="c4">返品できない前提で、説明を最後まで読んだ</label>
+      </div>
+      <div class="acts">
+        <button class="btn" type="button" id="save">この候補を保存</button>
+      </div>
+    </section>
+  </div>
+</main>
+
+<section class="card" style="margin-top:14px" aria-labelledby="hsync">
+  <h2 id="hsync">同期設定 <small style="font-size:12px;font-weight:500;color:var(--muted)">PC・iPhone共通</small></h2>
+  <p class="sub">候補は今までどおりこの端末にも保存します。合言葉を入れて「同期する」を押すと、サーバー上の候補と安全に統合します（どちらの端末の候補も消えません）。通信できないときもローカル保存は使えます。</p>
+  <div class="sync-grid">
+    <label class="f">合言葉（APIキー）
+      <input id="apiKey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="サーバーの合言葉">
+    </label>
+    <button class="btn small ghost" type="button" id="saveSyncKey">合言葉を保存</button>
+  </div>
+  <label class="check"><input id="autoSync" type="checkbox">候補の保存・状態変更・削除時に自動同期する</label>
+  <div class="acts">
+    <button class="btn small" type="button" id="syncNow">同期する</button>
+    <button class="btn small ghost" type="button" id="testSync">接続確認</button>
+    <button class="btn small ghost" type="button" id="toggleKey">合言葉を表示</button>
+    <button class="btn small ghost" type="button" id="forgetKey">合言葉を削除</button>
+  </div>
+  <p class="sync-status" id="syncStatus" role="status" aria-live="polite">未接続。合言葉はこの端末のブラウザ内だけに保存され、HTMLには埋め込みません。</p>
+</section>
+
+<section class="card saved" style="margin-top:14px" aria-labelledby="h6s">
+  <h2 id="h6s">保存した候補</h2>
+  <p class="sub">まずこの端末のブラウザに保存します。必要なら上の同期から、ほかの端末と共有できます。</p>
+  <div class="saved-tools" id="filters" aria-label="候補の状態で絞り込み"></div>
+  <div id="list"></div>
+  <div class="acts"><button class="btn small ghost" type="button" id="copy">一覧をテキストでコピー</button></div>
+  <textarea class="out" id="copyOut" readonly hidden aria-label="コピー用の一覧"></textarea>
+</section>
+
+<p class="foot">仕入れ判断の補助です。利益や売却を保証するものではありません。中古品を個人から仕入れて売る場合は、古物商許可が必要になることがあります。</p>
+</div>
+
+<div class="bar" aria-live="polite">
+  <div class="bar-in">
+    <div><div class="v" id="bar-v">—</div><div class="t" id="bar-t">入札上限（落札額＋送料）</div></div>
+    <div class="v" id="bar-lv" style="font-size:16px"></div>
+  </div>
+</div>
+
+<script>/* Shared, dependency-free calculation. Rates are percentages; points never fund cash profit. */
+(function(root){
+  'use strict';
+  function amount(v,name){
+    if(v===null || v===undefined || (typeof v==='string' && !v.trim()))throw new Error(name+'が未入力です');
+    const n=Number(v);if(!Number.isFinite(n)||n<0)throw new Error(name+'が不正です');return n;
+  }
+  function calculate(input){
+    const sale=amount(input.sale,'販売価格'),buy=amount(input.buy,'仕入価格');
+    const incoming=amount(input.incoming,'仕入送料'),shipping=amount(input.shipping,'発送送料'),packing=amount(input.packing,'梱包費');
+    const rate=amount(input.feeRate,'手数料率'),discount=amount(input.discountRate??0,'値引率');
+    if(rate>100||discount>=100)throw new Error('率の範囲が不正です');
+    const revenue=sale*(1-discount/100),fee=revenue*rate/100+amount(input.fixedFee??0,'固定手数料');
+    const net=revenue-fee-buy-incoming-shipping-packing;
+    const minProfit=amount(input.minProfit??1500,'目標利益'),minMargin=amount(input.minMargin??15,'利益率');
+    if(minMargin>100)throw new Error('利益率の範囲が不正です');
+    const beforeBuy=revenue-fee-incoming-shipping-packing;
+    const cap=Math.max(0,Math.floor(Math.min(beforeBuy-minProfit,beforeBuy-revenue*minMargin/100)));
+    return {revenue,fee,cashProfit:net,margin:revenue?net/revenue*100:0,maxBuy:cap,points:amount(input.points??0,'ポイント')};
+  }
+  function recordSale(record, input, now=Date.now()){
+    const date=input.soldAt;
+    if(typeof date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(date))throw new Error('売却日を入力してください');
+    const parsed=new Date(date+'T00:00:00.000Z');
+    if(!Number.isFinite(parsed.getTime())||parsed.toISOString().slice(0,10)!==date)throw new Error('売却日が正しくありません');
+    const result=calculate(input);
+    if(result.revenue<=0)throw new Error('実売価格は0円より大きい金額を入力してください');
+    return {...record,actual:{...input},actualProfit:result.cashProfit,actualMargin:result.margin,status:'売却済み',updatedAt:now};
+  }
+  root.KatachiCore=Object.freeze({calculate,recordSale});
+})(globalThis);
+</script>
+<script>(function(root){
+  const clone=x=>x===undefined?undefined:JSON.parse(JSON.stringify(x));
+  const canonical=x=>x&&typeof x==='object'?(Array.isArray(x)?x.map(canonical):Object.fromEntries(Object.keys(x).sort().map(k=>[k,canonical(x[k])]))):x;
+  const same=(a,b)=>JSON.stringify(canonical(a))===JSON.stringify(canonical(b));
+  function merge(base,local,remote){
+    const out=[],conflicts=[];
+    const maps=[base,local,remote].map(d=>new Map((d.candidates||[]).map(r=>[r.id,r])));
+    const deleted={...(local.deleted||{}),...(remote.deleted||{})};
+    for(const id of new Set(maps.flatMap(m=>[...m.keys()]))){
+      const [b,l,r]=maps.map(m=>m.get(id));
+      if(deleted[id]){
+        const changed=l&&!same(l,b)||r&&!same(r,b);
+        if(changed)conflicts.push({id,field:'削除と編集',local:l,remote:r});
+        continue;
+      }
+      if(!l){if(r)out.push(clone(r));continue;}
+      if(!r){out.push(clone(l));continue;}
+      const row={};
+      for(const k of new Set([...Object.keys(b||{}),...Object.keys(l),...Object.keys(r)])){
+        if(k==='updatedAt'){row[k]=Math.max(Number(l[k])||0,Number(r[k])||0);continue;}
+        if(same(l[k],r[k])||same(r[k],b?.[k]))row[k]=clone(l[k]);
+        else if(same(l[k],b?.[k]))row[k]=clone(r[k]);
+        else conflicts.push({id,field:k,local:l[k],remote:r[k]});
+      }
+      out.push(row);
+    }
+    let watches=local.watches||[];
+    if(same(watches,base.watches||[]))watches=remote.watches||[];
+    else if(!same(remote.watches||[],base.watches||[])&&!same(watches,remote.watches||[]))conflicts.push({id:'watch',field:'検索リスト',local:watches,remote:remote.watches});
+    return {data:{candidates:out,deleted,watches,watchesUpdatedAt:Math.max(local.watchesUpdatedAt||0,remote.watchesUpdatedAt||0)},conflicts};
+  }
+  root.KatachiSync={merge};
+})(globalThis);
+</script>
+<script>
+(function(){
+  if ((location.hostname === '127.0.0.1' || location.hostname === 'localhost') && location.port === '8789') {
+    document.getElementById('environmentLabel').textContent = 'このPC内のテスト用保存先（実商品候補の取得は未接続）';
+  }
+  "use strict";
+
+  var $ = function(id){ return document.getElementById(id); };
+  var KEY = "katachi-unified-dev-records-v1";
+  var STATE_KEY = "bid-note-form-v1";
+  var API_KEY = "bid-note-api-key-v1";
+  var AUTO_KEY = "bid-note-auto-sync-v1";
+  var DELETED_KEY = "katachi-unified-dev-deleted-v1";
+  var BASE_KEY = "katachi-unified-dev-sync-base-v1";
+  var API_URL = "/unified-api/data";
+  var HEALTH_URL = "/unified-api/health";
+  var syncing = false, syncAgain = false;
+  var DIRTY_KEY = "bid-note-sync-dirty-v1", LAST_SYNC_KEY = "bid-note-last-sync-v1";
+  var discoveryOrigin = null, lastDiscoverRead = 0;
+  function dirtyToken(){ try { return localStorage.getItem(DIRTY_KEY) || ""; } catch(e) { return "unsaved"; } }
+  function markDirty(){ try { localStorage.setItem(DIRTY_KEY, candidateId()); } catch(e) {} }
+  var WATCH_KEY = "bid-note-watch-keywords-v1";
+  var WATCH_AT_KEY = "bid-note-watch-updated-v1";
+  // Every storage key is isolated by environment, including credentials and sync baselines.
+  if (location.port !== '8789') {
+    var storagePrefix = 'katachi-unified-live-v1-';
+    KEY=storagePrefix+'records';STATE_KEY=storagePrefix+'form';API_KEY=storagePrefix+'key';
+    AUTO_KEY=storagePrefix+'auto';DELETED_KEY=storagePrefix+'deleted';BASE_KEY=storagePrefix+'base';
+    DIRTY_KEY=storagePrefix+'dirty';LAST_SYNC_KEY=storagePrefix+'last-sync';
+    WATCH_KEY=storagePrefix+'watches';WATCH_AT_KEY=storagePrefix+'watches-at';
+  }
+  var autoTimer = null;
+    var activeFilter = "すべて";
+  var STATUSES = ["検討中","入札中","見送り","落札","売却済み"];
+
+  function num(v){ var n = parseFloat(v); return isFinite(n) ? n : 0; }
+  function yen(n){ n = Math.round(n); return (n < 0 ? "−" : "") + "¥" + Math.abs(n).toLocaleString("ja-JP"); }
+
+  /* ---- 商品巡回 ---- */
+  function watchKeywords(){ return $("watchKeywords").value.split(/\r?\n/).map(function(x){ return x.trim(); }).filter(Boolean).slice(0,20); }
+  function watchUpdatedAt(){ try { return num(localStorage.getItem(WATCH_AT_KEY)); } catch (e) { return 0; } }
+  function storeWatches(words, at){
+    try { localStorage.setItem(WATCH_KEY, JSON.stringify(words)); localStorage.setItem(WATCH_AT_KEY, String(at)); } catch (e) {}
+  }
+  function saveWatches(){ storeWatches(watchKeywords(), Date.now()); $("watchKeywords").value = watchKeywords().join("\n"); renderWatches(); }
+  function loadWatches(){ try { var a = JSON.parse(localStorage.getItem(WATCH_KEY) || "[]"); if (Array.isArray(a)) $("watchKeywords").value = a.join("\n"); } catch (e) {} }
+  function searchUrl(site, keyword){
+    var q = encodeURIComponent(keyword);
+    if (site === "yauc") return "https://auctions.yahoo.co.jp/search/search?p=" + q + "&s1=end&o1=a";
+    if (site === "rakuma") return "https://fril.jp/s?query=" + q;
+    if (site === "paypay") return "https://paypayfleamarket.yahoo.co.jp/search/" + q;
+    return "https://netmall.hardoff.co.jp/search/?q=" + q;
+  }
+  function renderWatches(){
+    var box = $("watchList"), words = watchKeywords(); box.innerHTML = "";
+    if (!words.length) { var e = document.createElement("div"); e.className = "empty"; e.textContent = "検索したい商品を登録してください。"; box.appendChild(e); return; }
+    words.forEach(function(word){
+      var row = document.createElement("div"); row.className = "watch-row";
+      var name = document.createElement("div"); name.className = "watch-name"; name.textContent = word;
+      var links = document.createElement("div"); links.className = "watch-links";
+      [["ヤフオク","yauc"],["ラクマ","rakuma"],["Yahoo!フリマ","paypay"],["ハードオフ","hardoff"]].forEach(function(pair){
+        var a = document.createElement("a"); a.className = "lk"; a.target = "_blank"; a.rel = "noopener noreferrer"; a.href = searchUrl(pair[1], word); a.textContent = pair[0]; links.appendChild(a);
+      });
+      var use = document.createElement("button"); use.type = "button"; use.className = "btn small ghost"; use.textContent = "判定へ";
+      use.addEventListener("click", function(){ $("kw").value = word; saveForm(); render(); $("kw").scrollIntoView({ behavior:"smooth", block:"center" }); });
+      links.appendChild(use); row.appendChild(name); row.appendChild(links); box.appendChild(row);
+    });
+  }
+
+  /* ---- 型落ちアプリから候補を読む（APIキーはこの画面へ渡さない） ---- */
+  function discoverName(it){ return String((it && (it.title || it.name)) || "").trim(); }
+  function discoverPrice(it){ return Math.max(0, num(it && (it.price || it.eff))); }
+  function discoverLink(label, href){
+    var a = document.createElement("a"); a.className = "lk"; a.target = "_blank"; a.rel = "noopener noreferrer"; a.href = href; a.textContent = label; return a;
+  }
+  function discoverAutoJudge(it){
+    var cost = discoverPrice(it), market = [num(it.avg30),num(it.avg90),num(it.avg)].filter(function(x){ return x > 0; });
+    if (!cost || !market.length) return { level:"hold", text:"要確認：販売相場が不足" };
+    var safe = Math.min.apply(Math, market), p = params();
+    var profit = profitAt(p, safe, cost), margin = safe ? profit / safe * 100 : 0;
+    if (profit < p.minProfit || margin < p.minMargin) return { level:"hold", text:"参考平均で仮計算：差引 " + yen(profit) + "・実売相場の確認が必要", safe:safe };
+    return { level:"hold", text:"参考平均で仮計算：差引 " + yen(profit) + "・販売実績ではありません", safe:safe };
+  }
+  function applyDiscoverToJudge(it, name, price){
+    $("kw").value = name; if (price) $("lot").value = String(Math.round(price));
+    var comps = [num(it.avg30),num(it.avg90),num(it.avg)].filter(function(x){ return x > 0; });
+    for (var j = 0; j < 5; j++) $("sold" + j).value = "";
+    discoveryOrigin = { sourceUrl: it.url || "", asin: it.asin || "", jan: it.jan || "", source: it.shop || "keepa", referencePrices: comps, sourceUpdatedAt: it.sourceUpdatedAt || null, observedAt: new Date().toISOString(), name: name };
+    saveForm(); render(); $("h5s").scrollIntoView({ behavior:"smooth", block:"start" });
+  }
+  function renderDiscover(data){
+    var box = $("discoverList"), rows = [];
+    (data.deals || []).forEach(function(it){ rows.push({ source:"Keepa", item:it }); });
+    (data.scan || []).forEach(function(it){ rows.push({ source:it.shop === "rakuten" ? "楽天" : (it.shop === "yahoo" ? "Yahoo!" : "検索"), item:it }); });
+    var keepaRows = rows.filter(function(x){ return x.source === "Keepa"; }), shopRows = rows.filter(function(x){ return x.source !== "Keepa"; });
+    rows = []; for (var n = 0; n < Math.max(keepaRows.length, shopRows.length); n++) { if (shopRows[n]) rows.push(shopRows[n]); if (keepaRows[n]) rows.push(keepaRows[n]); }
+    box.innerHTML = "";
+    rows.slice(0, 30).forEach(function(row){
+      var it = row.item, name = discoverName(it); if (!name) return;
+      var card = document.createElement("article"); card.className = "discover-item";
+      var title = document.createElement("strong"); title.textContent = name;
+      var meta = document.createElement("div"); meta.className = "discover-meta";
+      var price = discoverPrice(it), bits = [row.source];
+      if (price) bits.push(yen(price));
+      if (it.drop) bits.push("値下がり " + Math.round(num(it.drop)) + "%");
+      if (it.discountPct) bits.push("割引 " + Math.round(num(it.discountPct)) + "%");
+      meta.textContent = bits.join(" ・ ");
+      var auto = discoverAutoJudge(it), badge = document.createElement("div"); badge.className = "auto-judge " + auto.level; badge.textContent = auto.text;
+      var acts = document.createElement("div"); acts.className = "discover-actions";
+      var use = document.createElement("button"); use.type = "button"; use.className = "btn small"; use.textContent = "実売相場を確認して判定";
+      use.addEventListener("click", function(){ applyDiscoverToJudge(it, name, price); });
+      acts.appendChild(use);
+      [["ラクマ","rakuma"],["Yahoo!フリマ","paypay"],["ハードオフ","hardoff"]].forEach(function(pair){ acts.appendChild(discoverLink(pair[0], searchUrl(pair[1], name + " 未使用"))); });
+      if (it.url) acts.appendChild(discoverLink(row.source + "の商品", it.url));
+      card.appendChild(title); card.appendChild(meta); card.appendChild(badge); card.appendChild(acts); box.appendChild(card);
+    });
+    if (!box.children.length) { var e = document.createElement("div"); e.className = "empty"; e.textContent = "候補はまだありません。型落ちアプリ側の巡回後にもう一度読み込んでください。"; box.appendChild(e); }
+    $("discoverStatus").textContent = "取得元の代表日時：" + (data.at ? new Date(data.at).toLocaleString("ja-JP") : "不明") + "（各商品の更新日時とは異なります）・取得 " + rows.length + "件／表示 " + box.children.length + "件";
+    $("discoverStatus").dataset.kind = "";
+  }
+  function loadDiscover(){
+    var btn = $("loadDiscover");
+    if (btn.disabled) return;
+    btn.disabled = true; btn.textContent = "読込中…"; $("discoverStatus").textContent = "型落ちアプリから候補を確認しています。";
+    fetch("/api/bidnote-discover", { headers:{ "accept":"application/json" }, cache:"no-store" })
+      .then(function(res){ if (!res.ok) throw new Error("HTTP " + res.status); return res.json(); })
+      .then(function(data){ if (!data || data.ok === false) throw new Error((data && data.error) || "取得できませんでした"); renderDiscover(data); lastDiscoverRead = Date.now(); })
+      .catch(function(err){ $("discoverStatus").textContent = "候補を取得できませんでした。通信を確認して、もう一度押してください。（" + err.message + "）"; $("discoverStatus").dataset.kind = "error"; })
+      .then(function(){ btn.disabled = false; btn.textContent = "候補を読み込む"; });
+  }
+
+  /* ---- 計算（画面に依存しない関数） ---- */
+  function stats(list){
+    var a = list.filter(function(x){ return x > 0; }).sort(function(x, y){ return x - y; });
+    var n = a.length;
+    if (!n) return { n: 0, median: 0, q25: 0, min: 0, safe: 0 };
+    var median = n % 2 ? a[(n - 1) / 2] : (a[n / 2 - 1] + a[n / 2]) / 2;
+    var pos = (n - 1) * 0.25, lo = Math.floor(pos), hi = Math.ceil(pos);
+    var q25 = a[lo] + (a[hi] - a[lo]) * (pos - lo);
+    var safe = n >= 5 ? Math.min(median, q25) : a[0];
+    return { n: n, median: median, q25: q25, min: a[0], safe: safe };
+  }
+
+  function limits(p){
+    var r = p.feeRate / 100;
+    var fee = p.safe * r;
+    var net = p.safe - fee - p.ship - p.pack;
+    var byProfit = net - p.minProfit;
+    var byMargin = net - (p.minMargin / 100) * p.safe;
+    var shared = KatachiCore.calculate({sale:p.safe,buy:0,incoming:0,shipping:p.ship,packing:p.pack,feeRate:p.feeRate,minProfit:p.minProfit,minMargin:p.minMargin});
+    var total = Math.floor(shared.maxBuy / 10) * 10;
+    return { fee: fee, net: net, byProfit: byProfit, byMargin: byMargin, total: total, usedMargin: byMargin < byProfit };
+  }
+
+  function profitAt(p, price, cost){
+    var r = p.feeRate / 100;
+    return KatachiCore.calculate({sale:price,buy:cost,incoming:0,shipping:p.ship,packing:p.pack,feeRate:p.feeRate}).cashProfit;
+  }
+
+  function judge(p, st, lim, lot, lotShip, checked, checkCount){
+    var reasons = [];
+    if (!(st.safe > 0)) return { level: "empty", reasons: reasons };
+    if (!(lot > 0)) return { level: "empty", reasons: reasons };
+    var cost = lot + lotShip;
+    var profit = profitAt(p, st.safe, cost);
+    var margin = profit / st.safe * 100;
+    var medProfit = profitAt(p, st.median, cost);
+    var down = profitAt(p, st.safe * 0.9, cost);
+    var bad = false, hold = false;
+
+    if (profit <= 0) { bad = true; reasons.push({ t: "ng", x: "安全売価で売ると赤字です（" + yen(profit) + "）" }); }
+    else if (profit < p.minProfit) { bad = true; reasons.push({ t: "ng", x: "見込み利益 " + yen(profit) + " が最低利益 " + yen(p.minProfit) + " に届きません" }); }
+    else reasons.push({ t: "ok", x: "安全売価での見込み利益 " + yen(profit) });
+
+    if (profit > 0) {
+      if (margin < p.minMargin) { bad = true; reasons.push({ t: "ng", x: "利益率 " + margin.toFixed(1) + "% が最低 " + p.minMargin + "% 未満です" }); }
+      else reasons.push({ t: "ok", x: "利益率 " + margin.toFixed(1) + "%" });
+    }
+    if (down <= 0) { hold = true; reasons.push({ t: "warn", x: "売値が1割下がると赤字になります（" + yen(down) + "）" }); }
+    else reasons.push({ t: "ok", x: "売値が1割下がっても黒字です（" + yen(down) + "）" });
+
+    if (p.minMedProfit > 0) {
+      if (medProfit < p.minMedProfit) { hold = true; reasons.push({ t: "warn", x: "中央値で売れた場合の利益 " + yen(medProfit) + " が " + yen(p.minMedProfit) + " に届きません" }); }
+      else reasons.push({ t: "ok", x: "中央値で売れた場合の利益 " + yen(medProfit) });
+    } else reasons.push({ t: "ref", x: "相場の中央値で売れた場合は " + yen(medProfit) });
+
+    if (st.n < 3) { hold = true; reasons.push({ t: "warn", x: "売り切れの入力が" + st.n + "件です。3件以上を目安にしてください" }); }
+    if (checkCount < checked) { hold = true; reasons.push({ t: "warn", x: "入札前の確認が " + checkCount + "/" + checked + " です" }); }
+    else reasons.push({ t: "ok", x: "入札前の確認がすべて済んでいます" });
+
+    var order = { ng: 0, warn: 1, ok: 2, ref: 3 };
+    reasons.sort(function(a, b){ return order[a.t] - order[b.t]; });
+    return { level: bad ? "skip" : hold ? "hold" : "ok", reasons: reasons, profit: profit, margin: margin };
+  }
+
+  /* ---- 画面 ---- */
+  var TEXT = { ok: "入札してよい", hold: "確認が残っています", skip: "見送り", empty: "未判定" };
+  var FIELDS = ["kw","suf","sold0","sold1","sold2","sold3","sold4","n30","chan","fee","size","ship","pack","minP","minM","minMed","lot","lotShip","c0","c1","c2","c3","c4"];
+
+  function val(id){ var el = $(id); return el.type === "checkbox" ? el.checked : el.value; }
+  function setVal(id, v){ var el = $(id); if (el.type === "checkbox") el.checked = !!v; else el.value = v == null ? "" : v; }
+
+  function formSnapshot(){
+    var form = {};
+    FIELDS.forEach(function(id){ form[id] = val(id); });
+    return form;
+  }
+  function saveForm(){
+    try { localStorage.setItem(STATE_KEY, JSON.stringify(formSnapshot())); } catch (e) {}
+  }
+  function loadForm(){
+    try {
+      var raw = localStorage.getItem(STATE_KEY), form = raw ? JSON.parse(raw) : null;
+      if (!form || typeof form !== "object") return false;
+      FIELDS.forEach(function(id){ if (id in form) setVal(id, form[id]); });
+      return true;
+    } catch (e) { return false; }
+  }
+
+  function params(){
+    return { feeRate: num($("fee").value), ship: num($("ship").value), pack: num($("pack").value), minProfit: num($("minP").value), minMargin: num($("minM").value), minMedProfit: num($("minMed").value) };
+  }
+
+  function setLink(id, url, on){
+    var a = $(id);
+    if (on) { a.href = url; a.removeAttribute("aria-disabled"); }
+    else { a.removeAttribute("href"); a.setAttribute("aria-disabled", "true"); }
+  }
+
+  function renderLinks(){
+    var q = $("kw").value.trim(), has = !!q;
+    var qs = encodeURIComponent($("suf").checked && has ? q + " 新品未開封" : q);
+    var qp = encodeURIComponent(q);
+    setLink("l-yauc", "https://auctions.yahoo.co.jp/search/search?p=" + qs + "&s1=end&o1=a", has);
+    setLink("l-ypay", "https://paypayfleamarket.yahoo.co.jp/search/" + qs, has);
+    setLink("l-rakuma", "https://fril.jp/s?query=" + qs, has);
+    setLink("l-mon", "https://jp.mercari.com/search?keyword=" + qs + "&status=on_sale&item_condition_id=1", has);
+    setLink("l-hoff", "https://netmall.hardoff.co.jp/search/?q=" + qs, has);
+    setLink("l-msold", "https://jp.mercari.com/search?keyword=" + qp + "&status=sold_out&item_condition_id=1", has);
+    setLink("l-yclosed", "https://auctions.yahoo.co.jp/closedsearch/closedsearch?p=" + qp, has);
+  }
+
+  var last = {};
+
+  function render(){
+    renderLinks();
+    var solds = [0,1,2,3,4].map(function(i){ return num($("sold" + i).value); });
+    var st = stats(solds), p = params();
+    p.safe = st.safe;
+    $("st-n").textContent = st.n + "件";
+    $("st-med").textContent = st.n ? yen(st.median) : "—";
+    $("st-q").textContent = st.n ? yen(st.q25) : "—";
+    $("st-safe").textContent = st.n ? yen(st.safe) : "—";
+
+    var lotShip = num($("lotShip").value), lot = num($("lot").value);
+    var big = $("r-total"), bar = $("bar-v");
+    if (!(st.safe > 0)) {
+      big.textContent = "—"; big.className = "big off";
+      $("r-bid").textContent = "売り切れ相場を入れると計算します";
+      $("calc").innerHTML = "";
+      bar.textContent = "—";
+      last = { st: st, lim: null };
+    } else {
+      var lim = limits(p);
+      big.textContent = yen(lim.total); big.className = "big";
+      var bid = Math.max(0, lim.total - lotShip);
+      $("r-bid").textContent = lotShip > 0
+        ? "仕入れ側の送料 " + yen(lotShip) + " を引くと、落札額の上限は " + yen(bid) + " です"
+        : "送料込みの出品なら、落札額の上限もこの額です。送料別なら下で送料を入れてください";
+      $("calc").innerHTML =
+        row("安全売価", yen(st.safe)) +
+        row("販売手数料（" + p.feeRate + "%）", "−" + yen(lim.fee)) +
+        row("販売送料", "−" + yen(p.ship)) +
+        row("梱包費", "−" + yen(p.pack)) +
+        row("手取り", yen(lim.net), "sum") +
+        row("上限（最低利益 " + yen(p.minProfit) + " を残す）", yen(lim.byProfit)) +
+        row("上限（利益率 " + p.minMargin + "% を残す）", yen(lim.byMargin)) +
+        row("採用する上限（低い方・10円未満切り捨て）", yen(lim.total), "pick");
+      bar.textContent = yen(lim.total);
+      last = { st: st, lim: lim };
+    }
+
+    var cc = 0;
+    for (var i = 0; i < 5; i++) if ($("c" + i).checked) cc++;
+    var j = judge(p, st, last.lim, lot, lotShip, 5, cc);
+    var lv = j.level;
+    $("verdict").setAttribute("data-lv", lv);
+    $("v-text").textContent = TEXT[lv];
+    $("bar-lv").textContent = lv === "empty" ? "" : TEXT[lv];
+    $("bar-lv").style.color = lv === "ok" ? "var(--ok)" : lv === "hold" ? "var(--warn)" : lv === "skip" ? "var(--ng)" : "var(--muted)";
+    $("v-sub").textContent = lv === "empty" ? "売り切れ相場と出品の価格を入れると判定します" :
+      "総額 " + yen(lot + lotShip) + "（上限 " + yen(last.lim ? last.lim.total : 0) + "）／見込み利益 " + yen(j.profit);
+    var ul = $("reasons");
+    ul.innerHTML = "";
+    j.reasons.forEach(function(r){
+      var li = document.createElement("li");
+      var pill = document.createElement("span");
+      pill.className = "pill " + (r.t === "ref" ? "" : r.t);
+      pill.textContent = r.t === "ok" ? "OK" : r.t === "warn" ? "確認" : r.t === "ng" ? "NG" : "参考";
+      var tx = document.createElement("span");
+      tx.textContent = r.x;
+      li.appendChild(pill); li.appendChild(tx);
+      ul.appendChild(li);
+    });
+    last.level = lv; last.profit = j.profit; last.margin = j.margin;
+  }
+
+  function row(a, b, cls){
+    return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td>' + a + '</td><td>' + b + '</td></tr>';
+  }
+
+  /* ---- 保存 ---- */
+  function stableId(it){
+    if (it && it.id) return String(it.id);
+    var s = [it && it.at, it && it.name, it && it.lot, it && it.lotShip, it && it.total].join("|");
+    var h = 2166136261;
+    for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return "legacy-" + (h >>> 0).toString(36);
+  }
+  function normalizeCandidate(it){
+    if (!it || typeof it !== "object") return null;
+    var x = Object.assign({}, it);
+    x.id = stableId(x);
+    x.updatedAt = (typeof x.updatedAt === "string" && isNaN(Number(x.updatedAt))) ? (Date.parse(x.updatedAt) || 0) : (num(x.updatedAt) || 0);
+    if (STATUSES.indexOf(x.status) < 0) x.status = "検討中";
+    return x;
+  }
+  function readSaved(){
+    try { var s = localStorage.getItem(KEY); var a = s ? JSON.parse(s) : []; return Array.isArray(a) ? a.map(normalizeCandidate).filter(Boolean) : []; }
+    catch (e) { return []; }
+  }
+  function writeSaved(a){
+    try { localStorage.setItem(KEY, JSON.stringify((a || []).map(normalizeCandidate).filter(Boolean))); return true; } catch (e) { return false; }
+  }
+  function candidateId(){ return "c-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2,9); }
+  /* 削除の記録は { id: 削除時刻 } の形（公開中のv10-syncと同じ） */
+  function readDeleted(){
+    try {
+      var s = localStorage.getItem(DELETED_KEY), o = s ? JSON.parse(s) : {};
+      if (Array.isArray(o)) { var m = {}; o.forEach(function(d){ if (d && d.id) m[d.id] = Date.parse(d.deletedAt) || Date.now(); }); return m; }
+      return o && typeof o === "object" ? o : {};
+    } catch (e) { return {}; }
+  }
+  function writeDeleted(o){ try { localStorage.setItem(DELETED_KEY, JSON.stringify(o || {})); return true; } catch (e) { return false; } }
+  function mergeDeleted(a, b){
+    var out = {}, k; a = a || {}; b = b || {};
+    for (k in a) if (Object.prototype.hasOwnProperty.call(a, k)) out[k] = Math.max(num(a[k]), 1);
+    for (k in b) if (Object.prototype.hasOwnProperty.call(b, k)) out[k] = Math.max(num(out[k]), num(b[k]), 1);
+    return out;
+  }
+  function mergeCandidates(local, remote, deleted){
+    var map = {};
+    function add(it){ it = normalizeCandidate(it); if (!it || deleted[it.id]) return; var prev = map[it.id]; if (!prev || num(it.updatedAt) >= num(prev.updatedAt)) map[it.id] = it; }
+    (remote || []).forEach(add); (local || []).forEach(add);
+    return Object.keys(map).map(function(k){ return map[k]; }).sort(function(a, b){ return num(b.updatedAt) - num(a.updatedAt); }).slice(0, 100);
+  }
+  function today(){
+    var d = new Date();
+    return (d.getMonth() + 1) + "/" + d.getDate();
+  }
+  function renderList(){
+    var a = readSaved(), box = $("list");
+    writeSaved(a);
+    box.innerHTML = "";
+    renderFilters(a);
+    var visible = activeFilter === "すべて" ? a : a.filter(function(it){ return it.status === activeFilter; });
+    if (!a.length) {
+      var e = document.createElement("div");
+      e.className = "empty";
+      e.textContent = "まだ保存した候補はありません。判定した出品の「この候補を保存」で、ここに残せます。";
+      box.appendChild(e);
+      return;
+    }
+    if (!visible.length) {
+      var none = document.createElement("div"); none.className = "empty"; none.textContent = "この状態の候補はありません。"; box.appendChild(none); return;
+    }
+    visible.forEach(function(it){
+      var i = a.findIndex(function(x){ return x.id === it.id; });
+      var hasProfit = it.profit !== null && it.profit !== undefined && isFinite(Number(it.profit));
+      var lowProfit = hasProfit && Number(it.profit) < 1000;
+      var r = document.createElement("div"); r.className = "row" + (lowProfit ? " low-profit" : "");
+      var l = document.createElement("div");
+      var nm = document.createElement("div"); nm.className = "nm"; nm.textContent = it.name || "（名前なし）";
+      var meta = document.createElement("div"); meta.className = "meta";
+      meta.textContent = it.at + " ／ 出品 " + yen(it.lot + it.lotShip) + " ／ 上限 " + yen(it.total) + (hasProfit ? " ／ 利益 " + yen(it.profit) + (isFinite(Number(it.margin)) ? "（" + Number(it.margin).toFixed(1) + "%）" : "") : "") + " ／ " + (TEXT[it.level] || "未判定");
+      l.appendChild(nm); l.appendChild(meta);
+      if (it.origin && /^https:\/\//i.test(it.origin.sourceUrl || "")) l.appendChild(discoverLink("元の商品を確認", it.origin.sourceUrl));
+      if (lowProfit) { var w = document.createElement("span"); w.className = "profit-warning"; w.textContent = "⚠ 利益1,000円未満"; l.appendChild(w); }
+      var b = document.createElement("div"); b.className = "btns";
+      var status = document.createElement("select"); status.className = "status-select"; status.setAttribute("aria-label", (it.name || "候補") + "の状態");
+      STATUSES.forEach(function(s){ var o = document.createElement("option"); o.value = s; o.textContent = s; o.selected = s === it.status; status.appendChild(o); });
+      status.addEventListener("change", function(){ var cur = readSaved(); var target = cur.find(function(x){ return x.id === it.id; }); if (target) { target.status = status.value; target.updatedAt = Date.now(); } writeSaved(cur); renderList(); queueAutoSync(); });
+      var lo = document.createElement("button"); lo.type = "button"; lo.className = "btn small ghost"; lo.textContent = "読み込む";
+      lo.addEventListener("click", function(){
+        discoveryOrigin = it.origin || null;
+        FIELDS.forEach(function(id){ if (it.form && id in it.form) setVal(id, it.form[id]); });
+        $("sample").hidden = true;
+        saveForm();
+        render();
+        window.scrollTo(0, 0);
+      });
+      var de = document.createElement("button"); de.type = "button"; de.className = "btn small ghost"; de.textContent = "削除";
+      de.addEventListener("click", function(){
+        var cur = readSaved(); var target = cur[i]; cur.splice(i, 1); writeSaved(cur);
+        if (target && target.id) { var deleted = readDeleted(); deleted[target.id] = Date.now(); writeDeleted(deleted); }
+        renderList(); queueAutoSync();
+      });
+      b.appendChild(status); b.appendChild(lo); b.appendChild(de);
+      r.appendChild(l); r.appendChild(b);
+      var actual = document.createElement("details");
+      var summary = document.createElement("summary"); summary.textContent = "実売価格・実利益を記録"; actual.appendChild(summary);
+      var actualFields = {}, previous = it.actual || {};
+      actual.addEventListener('input',function(){actual.dataset.unsavedSale='true';});
+      var specs = [['sale','実売価格（円）','number'],['buy','実際の仕入価格（円）','number'],['incoming','実際の仕入送料（円）','number'],['shipping','実際の発送送料（円）','number'],['packing','実際の梱包費（円）','number'],['feeRate','実際の手数料率（%）','number'],['fixedFee','その他販売費用（円）','number'],['soldAt','売却日','date']];
+      specs.forEach(function(spec){
+        var label=document.createElement('label'),input=document.createElement('input');
+        label.textContent=spec[1];input.type=spec[2];input.setAttribute('aria-label',spec[1]+'：'+it.name);
+        if(spec[2]==='number'){input.min='0';input.step='any';}
+        input.value=previous[spec[0]] == null ? '' : previous[spec[0]];
+        actualFields[spec[0]]=input;label.appendChild(input);actual.appendChild(label);
+      });
+      var actualResult=document.createElement('p');
+      actualResult.textContent=it.actualProfit == null ? '未記録。実際にかかった費用を入力してください。' : '実利益 '+yen(it.actualProfit)+' ／ 売却日 '+(previous.soldAt||'');
+      var actualSave=document.createElement('button');actualSave.type='button';actualSave.className='btn';actualSave.textContent='売却実績を保存';
+      actualSave.addEventListener('click',function(){
+        try{
+          var values={};Object.keys(actualFields).forEach(function(k){values[k]=actualFields[k].value;});
+          var current=readSaved(),target=current.find(function(x){return x.id===it.id;});
+          if(!target)throw new Error('保存先の候補が見つかりません');
+          var recorded=KatachiCore.recordSale(target,values);
+          current[current.indexOf(target)]=recorded;
+          if(!writeSaved(current))throw new Error('保存できませんでした');
+          markDirty();renderList();queueAutoSync();
+        }catch(e){actualResult.textContent=e.message;}
+      });
+      actual.appendChild(actualSave);actual.appendChild(actualResult);r.appendChild(actual);
+      box.appendChild(r);
+    });
+  }
+  function renderFilters(a){
+    var box = $("filters"); box.innerHTML = "";
+    ["すべて"].concat(STATUSES).forEach(function(s){
+      var count = s === "すべて" ? a.length : a.filter(function(it){ return it.status === s; }).length;
+      var btn = document.createElement("button"); btn.type = "button"; btn.className = "filter-btn"; btn.setAttribute("aria-pressed", s === activeFilter ? "true" : "false"); btn.textContent = s + " " + count;
+      btn.addEventListener("click", function(){ activeFilter = s; renderList(); }); box.appendChild(btn);
+    });
+  }
+
+  $("save").addEventListener("click", function(){
+    var form = {};
+    FIELDS.forEach(function(id){ form[id] = val(id); });
+    var cur = readSaved();
+    cur.unshift({
+      name: $("kw").value.trim(), at: today(), lot: num($("lot").value), lotShip: num($("lotShip").value),
+      id: candidateId(), updatedAt: Date.now(), status: "検討中", total: last.lim ? last.lim.total : 0, level: last.level || "empty", profit: Number(last.profit) || 0, margin: Number(last.margin) || 0, form: form,
+      origin: discoveryOrigin && discoveryOrigin.name === $("kw").value.trim() ? discoveryOrigin : null
+    });
+    // Never silently discard older purchase/sales records.
+    if (!writeSaved(cur)) { $("v-sub").textContent = "この画面では保存できませんでした。下の「一覧をテキストでコピー」で控えてください"; }
+    saveForm();
+    renderList();
+    queueAutoSync();
+  });
+
+  /* ---- サーバー同期（localStorageを残し、サーバーとは統合） ---- */
+  function syncMessage(text, kind){ var el = $("syncStatus"); el.textContent = text; el.setAttribute("data-kind", kind || ""); }
+  function syncKey(){ return ($("apiKey").value || "").trim(); }
+  function storedApiKey(){ try { return localStorage.getItem(API_KEY) || ""; } catch (e) { return ""; } }
+  function saveSyncSettings(quiet){
+    try {
+      var k = syncKey();
+      if (k) localStorage.setItem(API_KEY, k); else localStorage.removeItem(API_KEY);
+      localStorage.setItem(AUTO_KEY, $("autoSync").checked ? "1" : "0");
+      if (!quiet) syncMessage(k ? "合言葉をこの端末に保存しました" : "合言葉を削除しました", k ? "ok" : "warn");
+      return true;
+    } catch (e) { syncMessage("同期設定を保存できませんでした", "error"); return false; }
+  }
+  function apiErrorMessage(e){
+    var m = String(e && e.message ? e.message : e || "通信に失敗しました");
+    if (/Failed to fetch|Load failed|NetworkError/i.test(m)) return "APIへ接続できません。通信状態またはCORS設定を確認してください。";
+    return m;
+  }
+  async function apiRequest(url, method, body){
+    var k = syncKey(); if (!k) throw new Error("合言葉を入力してください");
+    var headers = { "Authorization": "Bearer " + k, "Accept": "application/json" }, opt = { method: method || "GET", headers: headers, cache: "no-store" };
+    if (body !== undefined) { headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(body); }
+    var controller = new AbortController(), timer = setTimeout(function(){ controller.abort(); }, 15000);
+    opt.signal = controller.signal;
+    var res, text, data;
+    try { res = await fetch(url, opt); text = await res.text(); } finally { clearTimeout(timer); }
+    try { data = text ? JSON.parse(text) : {}; } catch (e) { throw new Error("サーバーの応答形式を確認できません。同期を中止しました"); }
+    if (!res.ok) {
+      if (res.status === 401 || res.status === 403) throw new Error("合言葉が違うか、認証できませんでした");
+      throw new Error((data && (data.error || data.message)) || ("HTTP " + res.status));
+    }
+    return data;
+  }
+  function serverCandidates(d){ if (!d || typeof d !== "object") return []; if (Array.isArray(d.candidates)) return d.candidates; if (Array.isArray(d.saved)) return d.saved; return []; }
+  function serverDeleted(d){
+    if (!d || !d.deleted) return {};
+    if (Array.isArray(d.deleted)) { var m = {}; d.deleted.forEach(function(x){ if (x && x.id) m[x.id] = Date.parse(x.deletedAt) || Date.now(); }); return m; }
+    return typeof d.deleted === "object" ? d.deleted : {};
+  }
+  function syncPayload(candidates, deleted, watches, watchesAt){ return { app: "bid-note", version: 1, updatedAt: new Date().toISOString(), candidates: candidates, deleted: deleted, watches: watches, watchesUpdatedAt: watchesAt }; }
+  async function testSync(){
+    saveSyncSettings(true); syncMessage("接続確認中…", "");
+    try { var d = await apiRequest(HEALTH_URL, "GET"); syncMessage(d && d.ok ? "接続OK。サーバーAPIは正常です" : "APIには接続できました", "ok"); }
+    catch (e) { syncMessage(apiErrorMessage(e), "error"); }
+  }
+  async function syncAll(silent, receiveOnly){
+    if (!syncKey()) { if (!silent) syncMessage("合言葉を入力してから同期してください", "warn"); return false; }
+    if (!navigator.onLine) { if (!silent) syncMessage("オフラインです。端末内には保存されています", "warn"); return false; }
+    if (syncing) { syncAgain = true; return false; }
+    syncing = true;
+    saveSyncSettings(true); if (!silent) syncMessage("サーバーと統合中…", "");
+    try {
+      var remote = await apiRequest(API_URL, "GET");
+      if (!remote || typeof remote !== "object" || Array.isArray(remote) || remote.error) throw new Error("同期データの形式を確認できません");
+      if (!Number.isSafeInteger(remote.revision)) throw new Error("同期サーバーが上書き防止方式に未対応です。送信を止めました");
+      var base = JSON.parse(localStorage.getItem(BASE_KEY) || '{"candidates":[],"deleted":{},"watches":[]}');
+      var local = { candidates:readSaved(), deleted:readDeleted(), watches:watchKeywords(), watchesUpdatedAt:watchUpdatedAt() };
+      var merge = KatachiSync.merge(base,local,remote);
+      if (merge.conflicts.length) {
+        localStorage.setItem(BASE_KEY + '-conflict',JSON.stringify({at:new Date().toISOString(),base:base,local:local,remote:remote,conflicts:merge.conflicts}));
+        throw new Error("同じ項目の変更が競合しました（" + merge.conflicts.length + "件）。両方の内容を端末に保管しました");
+      }
+      var deleted = merge.data.deleted;
+      var merged = merge.data.candidates;
+      var token = dirtyToken();
+      var payload = syncPayload(merged,deleted,merge.data.watches,merge.data.watchesUpdatedAt);
+      if (remote.legacySources) payload.legacySources = remote.legacySources;
+      payload.app = 'katachi-unified'; payload.schemaVersion = 1;
+      payload.expectedRevision = remote.revision;
+      if (!receiveOnly || token) {
+        var reply = await apiRequest(API_URL,"PUT",payload);
+        if (!reply.ok || !Number.isSafeInteger(reply.revision)) throw new Error("保存結果を確認できません");
+      }
+      localStorage.setItem(BASE_KEY,JSON.stringify(merge.data));
+      if (dirtyToken() !== token) throw new Error("同期中に入力が変わりました。端末の変更を残して次回同期します");
+      if (!writeDeleted(deleted) || !writeSaved(merged)) throw new Error("同期先への処理後、端末内の保存に失敗しました。再同期してください");
+      /* 検索リストは新しく更新した方を採用 */
+      var words = watchKeywords(), wAt = watchUpdatedAt();
+      if (Array.isArray(merge.data.watches)) {
+        words = merge.data.watches.map(String); wAt = num(merge.data.watchesUpdatedAt);
+        storeWatches(words, wAt); $("watchKeywords").value = words.join("\n"); renderWatches();
+      }
+      if (dirtyToken() === token) { try { localStorage.removeItem(DIRTY_KEY); } catch(e) {} }
+      renderList();
+      var syncedAt = new Date().toISOString();
+      try { localStorage.setItem(LAST_SYNC_KEY, syncedAt); } catch(e) {}
+      syncMessage((dirtyToken() ? "未送信の変更があります。" : "同期確認済み：") + "候補 " + readSaved().length + "件（" + new Date(syncedAt).toLocaleString("ja-JP") + "）", dirtyToken() ? "warn" : "ok");
+      return true;
+    } catch (e) { syncMessage(apiErrorMessage(e) + " ローカルの候補はそのまま残っています。", "error"); return false; }
+    finally { syncing = false; if (syncAgain) { syncAgain = false; if ($("autoSync").checked) queueAutoSync(false); } }
+  }
+  function queueAutoSync(changed){
+    if (changed !== false) markDirty();
+    if (!$("autoSync").checked || !storedApiKey()) return;
+    clearTimeout(autoTimer);
+    autoTimer = setTimeout(function(){ syncAll(true, true); }, 1200);
+  }
+
+  $("apiKey").value = storedApiKey();
+  try { $("autoSync").checked = localStorage.getItem(AUTO_KEY) === "1"; } catch (e) {}
+  $("saveSyncKey").addEventListener("click", function(){ saveSyncSettings(false); queueAutoSync(false); });
+  $("forgetKey").addEventListener("click", function(){ $("apiKey").value = ""; saveSyncSettings(true); syncMessage("この端末から合言葉を削除しました", "ok"); });
+  $("toggleKey").addEventListener("click", function(){
+    var show = $("apiKey").type === "password"; $("apiKey").type = show ? "text" : "password"; $("toggleKey").textContent = show ? "合言葉を隠す" : "合言葉を表示";
+  });
+  $("autoSync").addEventListener("change", function(){ saveSyncSettings(true); syncMessage(this.checked ? "自動同期を有効にしました" : "自動同期を無効にしました", this.checked ? "ok" : ""); if (this.checked) queueAutoSync(); });
+  $("testSync").addEventListener("click", testSync);
+  $("syncNow").addEventListener("click", function(){ syncAll(false); });
+  $("saveWatches").addEventListener("click", function(){ saveWatches(); queueAutoSync(); });
+  $("useCurrentKeyword").addEventListener("click", function(){
+    var word = $("kw").value.trim(); if (!word) return;
+    var words = watchKeywords(); if (words.indexOf(word) < 0) words.push(word);
+    $("watchKeywords").value = words.slice(0,20).join("\n"); saveWatches(); queueAutoSync();
+  });
+  window.addEventListener("online", function(){ syncMessage("オンラインに戻りました。同期を確認します", ""); queueAutoSync(false); });
+  window.addEventListener("offline", function(){ syncMessage("オフラインです。端末内に保存します", "warn"); });
+
+  $("copy").addEventListener("click", function(){
+    var a = readSaved();
+    var text = a.length ? a.map(function(it){
+      return it.at + " " + (it.name || "（名前なし）") + " 出品" + yen(it.lot + it.lotShip) + " 上限" + yen(it.total) + " " + TEXT[it.level];
+    }).join("\n") : "保存した候補はありません";
+    var out = $("copyOut");
+    function fallback(){ out.hidden = false; out.value = text; out.focus(); out.select(); }
+    try {
+      navigator.clipboard.writeText(text).then(function(){ out.hidden = true; $("copy").textContent = "コピーしました"; setTimeout(function(){ $("copy").textContent = "一覧をテキストでコピー"; }, 1800); }, fallback);
+    } catch (e) { fallback(); }
+  });
+
+  /* ---- 入力まわり ---- */
+  FIELDS.forEach(function(id){
+    var ev = ($(id).type === "checkbox" || $(id).tagName === "SELECT") ? "change" : "input";
+    $(id).addEventListener(ev, render);
+    $(id).addEventListener(ev, saveForm);
+    if (ev === "change") $(id).addEventListener("input", render);
+  });
+  $("chan").addEventListener("change", function(){ $("fee").value = $("chan").value; saveForm(); render(); });
+  $("size").addEventListener("change", function(){ $("ship").value = $("size").value; saveForm(); render(); });
+  $("clearSample").addEventListener("click", function(){
+    ["kw","sold0","sold1","sold2","sold3","sold4","n30","lot","lotShip"].forEach(function(id){ $(id).value = ""; });
+    for (var i = 0; i < 5; i++) $("c" + i).checked = false;
+    $("sample").hidden = true;
+    saveForm();
+    render();
+  });
+
+  /* 例の数字（見本）：電気ひざ掛けを想定した架空の数字 */
+  if (!loadForm()) {
+    ["3980","4200","4480","4300","3800"].forEach(function(v, i){ $("sold" + i).value = v; });
+    $("kw").value = "電気ひざ掛け（例）";
+    $("n30").value = "6";
+  } else $("sample").hidden = true;
+
+  loadWatches();
+  renderWatches();
+  $("loadDiscover").addEventListener("click", loadDiscover);
+  window.__bidNote = { stats: stats, limits: limits, profitAt: profitAt, judge: judge };
+  render();
+  renderList();
+  try {
+    if (!localStorage.getItem(LAST_SYNC_KEY) && (readSaved().length || Object.keys(readDeleted()).length || watchKeywords().length)) markDirty();
+  } catch(e) {}
+  function refreshFromServer(){
+    if (document.hidden || !navigator.onLine) return;
+    queueAutoSync(false);
+    if (Date.now() - lastDiscoverRead > 300000) loadDiscover();
+  }
+  window.addEventListener("pageshow", refreshFromServer);
+  window.addEventListener("focus", refreshFromServer);
+  document.addEventListener("visibilitychange", function(){ if (!document.hidden) refreshFromServer(); });
+  window.addEventListener("storage", function(e){ if (e.key === KEY || e.key === DELETED_KEY) renderList(); });
+  setInterval(refreshFromServer, 30000);
+  refreshFromServer();
+})();
+</script>
+<script>
+// Offline support is not enabled for the unified preview.
+if (false && "serviceWorker" in navigator) {
+  window.addEventListener("load", function(){
+    var current = (document.querySelector('meta[name="bid-note-version"]') || {}).content || "";
+    var reloading = false;
+    function reloadLatest(version){
+      if (reloading) return; reloading = true;
+      var url = new URL(location.href); url.searchParams.set("v", version || current); url.searchParams.set("updated", Date.now());
+      location.replace(url.toString());
+    }
+    navigator.serviceWorker.addEventListener("controllerchange", function(){ reloadLatest(current); });
+    navigator.serviceWorker.register("sw.js?v=17.8").then(function(reg){
+      function check(){
+        reg.update().catch(function(){});
+        fetch("index.html?version-check=" + Date.now(), { cache:"no-store" }).then(function(res){ return res.text(); }).then(function(html){
+          var match = html.match(/name=["']bid-note-version["']\s+content=["']([^"']+)/i);
+          if (match && match[1] && match[1] !== current) reloadLatest(match[1]);
+        }).catch(function(){});
+      }
+      check();
+      setInterval(check, 300000);
+      document.addEventListener("visibilitychange", function(){ if (!document.hidden) check(); });
+    }).catch(function(){});
+  });
+}
+</script>
+<script>
+(function(){
+const groups={find:['hwatch','hdiscover','h1s'],judge:['h2s','h3s','h4s','h5s'],saved:['hsync','h6s']};
+function show(name){
+document.querySelectorAll('[data-screen]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.screen===name)));
+Object.entries(groups).forEach(([key,ids])=>ids.forEach(id=>{
+const h=document.getElementById(id);const section=h&&h.closest('section');if(section)section.classList.toggle('unified-hidden',key!==name);
+}));
+}
+document.querySelectorAll('[data-screen]').forEach(b=>b.addEventListener('click',()=>show(b.dataset.screen)));
+document.addEventListener('click',e=>{const b=e.target.closest('button');if(b&&!b.dataset.screen&&/判定へ|条件に反映/.test(b.textContent))show('judge');});
+show('find');
+})();
+</script><script>(function(){
+  const current='1.5.80';
+  if(!/^\d+\.\d+\.\d+$/.test(current))return;
+  let busy=false,banner;
+  async function check(){
+    if(busy||document.hidden||!navigator.onLine)return;
+    busy=true;
+    try{
+      const r=await fetch('/version',{cache:'no-store',signal:AbortSignal.timeout(5000)});
+      if(!r.ok)return;
+      const v=(await r.text()).trim();
+      if(!/^\d+\.\d+\.\d+$/.test(v)||v===current||banner)return;
+      banner=document.createElement('aside');banner.setAttribute('role','status');
+      banner.style.cssText='padding:12px;background:#fff4cd;color:#222;border:1px solid #b88b00';
+      banner.append(document.createTextNode('新しい版 '+v+' があります。入力を保存してから更新してください。 '));
+      const b=document.createElement('button');b.type='button';b.textContent='保存を確認して更新';
+      b.onclick=()=>{if(document.querySelector('[data-unsaved-sale="true"]')){b.textContent='先に売却実績を保存してください';return;}location.reload();};
+      banner.append(b);document.body.prepend(banner);
+    }catch{}finally{busy=false;}
+  }
+  document.addEventListener('visibilitychange',check);window.addEventListener('online',check);
+  setInterval(check,300000);check();
+})();
+</script></body>
+</html>
+

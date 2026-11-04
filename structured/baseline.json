@@ -1,0 +1,21 @@
+{
+  "source": "katachi-worker-v1.5.80.js",
+  "sha256": "af33f13dd4def24d611c2a612079a438fc31b34737645478488c30b780c80997",
+  "assets": [
+    {
+      "name": "HTML",
+      "file": "ui/HTML.html",
+      "sha256": "ae0a25e481aee3b5a80bf07672dba61d4949f10af849a613c78872b09ae78d5a"
+    },
+    {
+      "name": "STATUS_HTML",
+      "file": "ui/STATUS_HTML.html",
+      "sha256": "f7c6c47ec6f6a257c3deb4dc0c7a7673874cff5fc382c0272dbc499777f35d14"
+    },
+    {
+      "name": "unifiedHTML",
+      "file": "ui/unifiedHTML.html",
+      "sha256": "cdb96c9815fd4a2f4a380ee2e2fd7b6e0b0d9ce3775341909545727fc7a2f86c"
+    }
+  ]
+}

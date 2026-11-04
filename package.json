@@ -1,0 +1,9 @@
+{
+  "name": "katachi-worker",
+  "private": true,
+  "version": "1.5.80",
+  "scripts": {
+    "build": "node scripts/build-worker.cjs",
+    "verify": "node scripts/build-worker.cjs && node scripts/verify-structure.cjs && node --check build/worker.js"
+  }
+}

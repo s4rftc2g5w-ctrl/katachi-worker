@@ -1,0 +1,42 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>動作状況｜型落ち仕入れノート</title>
+<style>:root{--bg:#f6f7f9;--card:#fff;--fg:#1d2329;--mut:#6b7280;--ok:#15803d;--warn:#b45309;--ng:#b91c1c;--line:#e5e7eb}@media (prefers-color-scheme:dark){:root{--bg:#111418;--card:#1a1f25;--fg:#e8eaed;--mut:#9aa3ad;--ok:#4ade80;--warn:#fbbf24;--ng:#f87171;--line:#2a3038}}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 system-ui,-apple-system,"Hiragino Sans",sans-serif}main{max-width:640px;margin:0 auto;padding:16px}h1{font-size:19px;margin:4px 0 2px}.sub{color:var(--mut);font-size:13px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:10px 0}.row{display:flex;justify-content:space-between;gap:8px;align-items:baseline}.big{font-size:22px;font-weight:700}
+.ok{color:var(--ok)}.warn{color:var(--warn)}.ng{color:var(--ng)}button,input{font:inherit}input{padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--fg);width:100%;box-sizing:border-box}button{padding:8px 14px;border-radius:8px;border:0;background:#1F4E6B;color:#fff;margin-top:8px}a{color:inherit}</style></head><body><main>
+<h1>動作状況</h1><div class="sub">型落ち仕入れノートの自動実行が動いているかを確認します（<a href="/">アプリへ戻る</a>）</div>
+<div id="keybox" class="card" hidden><div>アプリと同じ合言葉を入れてください（この端末に記憶します）</div><input id="key" type="password" autocomplete="current-password"><button id="save">表示する</button></div>
+<div id="out"><div class="card sub">読み込み中…</div></div><button id="reload">更新</button> <button id="bk">サーバーの控えを保存</button> <span id="bkmsg" class="sub"></span></main>
+<script>
+var K="kataochi-key";function gk(){try{return localStorage.getItem(K)||""}catch(e){return""}}
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function jst(t){if(!t)return"—";var d=new Date(t);return d.toLocaleString("ja-JP",{timeZone:"Asia/Tokyo",month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"})}
+function ago(t){if(!t)return"";var m=Math.round((Date.now()-Date.parse(t))/60000);return m<60?m+"分前":m<1440?Math.floor(m/60)+"時間前":Math.floor(m/1440)+"日前"}
+function hourJST(){return (new Date().getUTCHours()+9)%24}
+function isMorningSaleTime(time) {
+  const j = new Date(time + 32400000), m = j.getUTCMonth() + 1, d = j.getUTCDate();
+  return d % 5 === 0 || d === 18 || (m % 3 === 0 && d >= 4 && d <= 11) || (m === 7 && d >= 7 && d <= 14) || (m === 10 && d <= 20) || (m === 11 && d >= 20) || (m === 12 && d <= 11);
+}
+
+function morningMissing(r, now) {
+  var j=new Date(now+32400000);
+  var today=Date.UTC(j.getUTCFullYear(),j.getUTCMonth(),j.getUTCDate(),7,30)-32400000;
+  // Allow 30 minutes for the scan and its dependent jobs to finish.
+  for(var i=0;i<40;i++){var due=today-i*86400000;if(due+1800000>now||!isMorningSaleTime(due))continue;return !r || Date.parse(r.start)<due;}
+  return false;
+}
+
+var JOBS=[["scan-am","朝の候補探し","7:30（セール日のみ）",0],["scan-pm","夜の候補探し","毎日20:30",26],["pool","候補プール確認","朝・夜の候補探しに続いて実行",26],["deals","Keepa値下がり候補","毎日20:30",26],["check","毎日チェック・売り時ウォッチ","毎日20:45",26],["dig","Yahoo!深掘り","毎晩23:00〜2:50（10分ごと）",0],["edionPatrol","エディオン巡回","毎日10:00",26],["digest","朝のまとめ通知","毎朝7:30",26]];
+function load(){var k=gk();if(!k){document.getElementById("keybox").hidden=false;document.getElementById("out").innerHTML="";return}
+fetch("/api/status?k="+encodeURIComponent(k)).then(function(r){return r.json()}).then(function(j){if(j.error){document.getElementById("keybox").hidden=false;document.getElementById("out").innerHTML='<div class="card ng">'+esc(j.error)+"</div>";return}
+document.getElementById("keybox").hidden=true;var bad=0,h="";
+JOBS.forEach(function(x){var r=j.by[x[0]],lim=x[3];if(x[0]==="scan-am")lim=Infinity;if(!lim){var hj=hourJST();lim=(hj>=23||hj<3)?0.5:24}
+var st,cls;if(!r){if(x[0]==="scan-am"){st="記録なし（次のセール日7:30以降に表示）";cls="sub"}else{st="記録なし（次の実行後に表示）";cls="warn";bad++}}else{var age=(Date.now()-Date.parse(r.end||r.start))/3600000;if(!r.end){if(Date.now()-Date.parse(r.start)<900000){st="実行中";cls="sub"}else{st="途中で止まった（15分以上終わっていません）";cls="ng";bad++}}else if((x[0]==="scan-am"&&morningMissing(r,Date.now()))||age>lim){st="❌ 予定時刻に動いていません";cls="ng";bad++}else if(r.ok===false){st="⚠ 動いたがエラーあり";cls="warn";bad++}else{st="✅ 正常";cls="ok"}}
+var det="";if(r&&r.issues&&r.issues.length)det='<span class="warn">'+esc(r.issues.join(" ／ "))+"</span><br>";if(r&&r.result){var s=r.result;if(x[0]==="dig"){var sk=!!s.skipped;if(sk){det+="今夜分は終了";s=s.lastReal||{}}if(s.kw!=null)det+=(sk?"（最後の検索：":"")+"「"+esc(s.kw)+"」取得"+(s.fetched||0)+"件・🔥"+(s.hot||0)+"件"+(sk?"）":"")}else if(x[0]==="edionPatrol")det+="新着"+(s.newItems||0)+"件";else if(s.resultCount!=null)det+="候補"+s.resultCount+"件";else if(s.checkedCount!=null)det+="確認"+s.checkedCount+"件"+(s.sell&&s.sell.items?"・売り時ウォッチ"+s.sell.items.length+"件":"");if(s.errors&&s.errors.length)det+='<br><span class="warn">'+esc(s.errors.join(" ／ "))+"</span>"}if(r&&r.err)det+='<br><span class="ng">'+esc(r.err)+"</span>";
+if(r&&r.yahoo&&r.yahoo.some(function(y){return y.status!==200}))det+='<br>Yahoo!の応答詳細は /api/status の yahoo を確認';h+='<div class="card"><div class="row"><b>'+x[1]+'</b><span class="'+cls+'">'+st+'</span></div><div class="sub">'+x[2]+" ／ 最終 "+jst(r&&(r.end||r.start))+(r?"（"+ago(r.end||r.start)+"）":"")+(j.by[x[0]+":ok"]?" ／ 最終成功 "+jst(j.by[x[0]+":ok"]):"")+"</div>"+(det?'<div class="sub">'+det+"</div>":"")+"</div>"});
+var d=j.dead&&j.dead[0];h+='<div class="card"><div class="row"><b>楽天の在庫処分（手動）</b><span class="sub">'+(d?jst(d.at):"未実行")+"</span></div>"+(d?'<div class="sub">「'+esc(d.kw)+"」取得"+d.fetched+"件→型番あり"+d.sale+"件→🔥"+d.hit+"件</div>":"")+"</div>";
+if(j.sell&&j.sell.length)h+='<div class="card"><b>売り時ウォッチ</b>'+j.sell.map(function(s){return'<div class="sub">'+esc(s.name)+"（在庫"+s.qty+"）"+(s.last?"：Amazon最安 ¥"+Number(s.last.comp_now||s.last.comp||0).toLocaleString()+"・目安 ¥"+Number(s.last.sug||0).toLocaleString()+"・"+esc(s.last.lv||""):"")+"</div>"}).join("")+"</div>";
+document.getElementById("out").innerHTML='<div class="card"><div class="big '+(bad?"ng":"ok")+'">'+(bad?"⚠ 確認が必要です（"+bad+"件）":"✅ 動いています")+'</div><div class="sub">アプリ ver.'+esc(j.version)+" ／ 確認 "+jst(j.now)+"</div></div>"+h;
+}).catch(function(e){document.getElementById("out").innerHTML='<div class="card ng">読み込めませんでした：'+esc(e.message)+"</div>"})}
+document.getElementById("save").onclick=function(){var v=document.getElementById("key").value.trim();if(!v)return;try{localStorage.setItem(K,v)}catch(e){}load()};
+document.getElementById('bk').onclick=function(){var k=gk(),b=this,m=document.getElementById('bkmsg');if(!k){m.textContent='合言葉を入れてください';return}b.disabled=true;m.textContent='作成中…';fetch('/api/backup?k='+encodeURIComponent(k)).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.blob()}).then(function(bl){var a=document.createElement('a');a.href=URL.createObjectURL(bl);a.download='katachi-backup-'+new Date(Date.now()+32400000).toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();a.remove();m.textContent='保存しました'}).catch(function(e){m.textContent='失敗：'+e.message}).then(function(){b.disabled=false})};document.getElementById("reload").onclick=load;load();
+</script></body></html>
