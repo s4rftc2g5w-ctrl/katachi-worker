@@ -10,6 +10,7 @@
 - `structured/ui/STATUS_HTML.html` — 動作状況画面。
 - `scripts/build-worker.cjs` — 上記を公開用の単一Workerへまとめます。
 - `structured/baseline.json` — 分離元v1.5.80と画面ファイルのハッシュです。
+- `docs/legacy-retirement.md` — 旧画面を安全に引退させる移行順と完了条件です。
 
 ## 確認
 
