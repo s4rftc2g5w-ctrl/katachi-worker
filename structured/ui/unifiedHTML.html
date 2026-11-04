@@ -78,6 +78,9 @@ h1{font-family:var(--head);font-weight:900;font-size:26px;letter-spacing:.02em;m
 @media (max-width:420px){.grid.three{grid-template-columns:1fr 1fr}}
 label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);min-width:0}
 label.f input,label.f select{font-size:16px;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:5px;padding:9px 10px;width:100%;min-width:0}
+.search-entry{display:flex;gap:8px;align-items:stretch}.search-entry input{flex:1}.search-entry .btn{flex:none}
+.scan-overlay{position:fixed;inset:0;z-index:100;background:rgba(6,13,10,.94);display:flex;align-items:center;justify-content:center;padding:18px}
+.scan-overlay[hidden]{display:none}.scan-panel{width:min(560px,100%);color:#fff}.scan-panel video{display:block;width:100%;max-height:55vh;object-fit:cover;background:#000;border-radius:6px;margin:10px 0}.scan-panel .sub{color:#d8e1dd}.scan-manual{display:flex;gap:8px}.scan-manual input{flex:1;min-width:0;font-size:16px;padding:9px 10px;border:1px solid #809087;border-radius:5px;background:#fff;color:#111}
 .links{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 .links+.group{margin-top:14px}
 .group{font-size:12px;color:var(--muted);margin:14px 0 0;font-weight:700;letter-spacing:.06em}
@@ -158,6 +161,15 @@ textarea.out{width:100%;min-height:90px;font-size:13px;background:var(--field);b
 .unified-hidden{display:none!important}.unified-note{font-size:13px;color:var(--muted)}
 </style></head>
 <body>
+<div class="scan-overlay" id="scanOverlay" hidden role="dialog" aria-modal="true" aria-labelledby="scanTitle">
+  <div class="scan-panel">
+    <h2 id="scanTitle">JANコードを読み取る</h2>
+    <p class="sub" id="scanMessage">カメラをバーコードへ向けてください。</p>
+    <video id="scanVideo" playsinline muted></video>
+    <div class="scan-manual"><input id="scanManual" type="text" inputmode="numeric" autocomplete="off" placeholder="JANを手入力"><button class="btn" type="button" id="scanUse">使う</button></div>
+    <button class="btn ghost" type="button" id="scanClose" style="margin-top:10px">閉じる</button>
+  </div>
+</div>
 <div class="wrap">
 <header class="head">
   <h1>katachi 統合版 <span class="version" aria-label="バージョン 1.5.80">1.5.80</span></h1>
@@ -199,12 +211,17 @@ textarea.out{width:100%;min-height:90px;font-size:13px;background:var(--field);b
     <section class="card" aria-labelledby="h1s">
       <h2 id="h1s"><span class="step">1</span>探す</h2>
       <p class="sub">型番か商品名を入れて、各サイトの検索を開きます。ヤフオクはストア出品・新品に絞ると安全です。</p>
-      <label class="f full">型番・商品名
-        <input id="kw" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="例: 電気ひざ掛け HK-123">
+      <label class="f full">型番・JAN・商品名
+        <span class="search-entry"><input id="kw" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="例: HK-123 または13桁のJAN"><button class="btn small ghost" type="button" id="scanJan">📷 JAN</button></span>
       </label>
       <label class="check"><input id="suf" type="checkbox" checked>探す検索には「新品未開封」を足す</label>
       <p class="group">安く出ている新品を探す</p>
       <div class="links">
+        <a class="lk" id="l-rakuten" target="_blank" rel="noopener noreferrer">楽天</a>
+        <a class="lk" id="l-yahoo" target="_blank" rel="noopener noreferrer">Yahoo!ショッピング</a>
+        <a class="lk" id="l-amazon" target="_blank" rel="noopener noreferrer">Amazon</a>
+        <a class="lk" id="l-keepa" target="_blank" rel="noopener noreferrer">Keepa</a>
+        <a class="lk" id="l-kakaku" target="_blank" rel="noopener noreferrer">価格.com</a>
         <a class="lk" id="l-yauc" target="_blank" rel="noopener noreferrer">ヤフオク（終了が近い順）</a>
         <a class="lk" id="l-ypay" target="_blank" rel="noopener noreferrer">PayPayフリマ</a>
         <a class="lk" id="l-rakuma" target="_blank" rel="noopener noreferrer">ラクマ</a>
@@ -445,6 +462,39 @@ textarea.out{width:100%;min-height:90px;font-size:13px;background:var(--field);b
   function num(v){ var n = parseFloat(v); return isFinite(n) ? n : 0; }
   function yen(n){ n = Math.round(n); return (n < 0 ? "−" : "") + "¥" + Math.abs(n).toLocaleString("ja-JP"); }
 
+  /* ---- JANカメラ ---- */
+  var scanStream = null, scanFrame = 0, scanDetector = null;
+  function validJan(value){ return /^\d{8}$|^\d{12,14}$/.test(String(value || "").replace(/\D/g, "")); }
+  function useJan(value){
+    var jan = String(value || "").replace(/\D/g, "");
+    if (!validJan(jan)) { $("scanMessage").textContent = "8桁または12〜14桁のコードを入力してください。"; return; }
+    $("kw").value = jan; closeJanScanner(); saveForm(); render(); $("kw").focus();
+  }
+  function closeJanScanner(){
+    if (scanFrame) cancelAnimationFrame(scanFrame); scanFrame = 0;
+    if (scanStream) scanStream.getTracks().forEach(function(track){ track.stop(); }); scanStream = null;
+    $("scanVideo").srcObject = null; $("scanOverlay").hidden = true;
+  }
+  function scanNext(){
+    if (!scanDetector || !scanStream) return;
+    scanDetector.detect($("scanVideo")).then(function(codes){
+      if (codes && codes[0] && validJan(codes[0].rawValue)) return useJan(codes[0].rawValue);
+      scanFrame = requestAnimationFrame(scanNext);
+    }).catch(function(){ scanFrame = requestAnimationFrame(scanNext); });
+  }
+  function openJanScanner(){
+    $("scanOverlay").hidden = false; $("scanManual").value = "";
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.BarcodeDetector) {
+      $("scanVideo").hidden = true; $("scanMessage").textContent = "この端末ではカメラ読み取りを使えません。JANを手入力してください。"; $("scanManual").focus(); return;
+    }
+    $("scanVideo").hidden = false; $("scanMessage").textContent = "カメラをバーコードへ向けてください。";
+    try { scanDetector = new BarcodeDetector({ formats:["ean_13","ean_8","upc_a","upc_e"] }); }
+    catch(e) { $("scanVideo").hidden = true; $("scanMessage").textContent = "バーコード読み取りに未対応です。JANを手入力してください。"; return; }
+    navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ ideal:"environment" } }, audio:false }).then(function(stream){
+      scanStream = stream; $("scanVideo").srcObject = stream; return $("scanVideo").play();
+    }).then(scanNext).catch(function(){ $("scanVideo").hidden = true; $("scanMessage").textContent = "カメラを開けませんでした。JANを手入力してください。"; });
+  }
+
   /* ---- 商品巡回 ---- */
   function watchKeywords(){ return $("watchKeywords").value.split(/\r?\n/).map(function(x){ return x.trim(); }).filter(Boolean).slice(0,20); }
   function watchUpdatedAt(){ try { return num(localStorage.getItem(WATCH_AT_KEY)); } catch (e) { return 0; } }
@@ -642,6 +692,11 @@ textarea.out{width:100%;min-height:90px;font-size:13px;background:var(--field);b
     var q = $("kw").value.trim(), has = !!q;
     var qs = encodeURIComponent($("suf").checked && has ? q + " 新品未開封" : q);
     var qp = encodeURIComponent(q);
+    setLink("l-rakuten", "https://search.rakuten.co.jp/search/mall/" + qp + "/", has);
+    setLink("l-yahoo", "https://shopping.yahoo.co.jp/search?p=" + qp, has);
+    setLink("l-amazon", "https://www.amazon.co.jp/s?k=" + qp, has);
+    setLink("l-keepa", "https://keepa.com/#!search/5-" + qp, has);
+    setLink("l-kakaku", "https://kakaku.com/search_results/" + qp + "/", has);
     setLink("l-yauc", "https://auctions.yahoo.co.jp/search/search?p=" + qs + "&s1=end&o1=a", has);
     setLink("l-ypay", "https://paypayfleamarket.yahoo.co.jp/search/" + qs, has);
     setLink("l-rakuma", "https://fril.jp/s?query=" + qs, has);
@@ -1003,6 +1058,11 @@ textarea.out{width:100%;min-height:90px;font-size:13px;background:var(--field);b
   });
 
   /* ---- 入力まわり ---- */
+  $("scanJan").addEventListener("click", openJanScanner);
+  $("scanClose").addEventListener("click", closeJanScanner);
+  $("scanUse").addEventListener("click", function(){ useJan($("scanManual").value); });
+  $("scanManual").addEventListener("keydown", function(e){ if (e.key === "Enter") useJan(this.value); });
+  $("scanOverlay").addEventListener("click", function(e){ if (e.target === this) closeJanScanner(); });
   FIELDS.forEach(function(id){
     var ev = ($(id).type === "checkbox" || $(id).tagName === "SELECT") ? "change" : "input";
     $(id).addEventListener(ev, render);
