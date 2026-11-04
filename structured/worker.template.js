@@ -1595,6 +1595,14 @@ async function logRun(env, kind, ev, fn) {
   } catch (_) { console.error(JSON.stringify({event:'cron-kv-error',runId:rec.id,key:'legacy-log'})); }
   console.log(JSON.stringify({event:'cron-complete', ...rec}));
 }
+function requestAccessKey(request) {
+  const auth = request.headers.get('authorization') || '';
+  if (/^Bearer\s+/i.test(auth)) return auth.replace(/^Bearer\s+/i, '').trim();
+  const headerKey = request.headers.get('x-katachi-key');
+  if (headerKey) return headerKey.trim();
+  return '';
+}
+
 const legacyWorker = {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -1623,8 +1631,8 @@ const legacyWorker = {
     }
 
     if (url.pathname.startsWith('/api/')) {
-      if (url.pathname !== '/api/bidnote-discover' && !env.ACCESS_KEY) return json({ error: 'ACCESS_KEY を設定してください' }, 500);
-      if (url.pathname !== '/api/bidnote-discover' && url.searchParams.get('k') !== env.ACCESS_KEY) return json({ error: '合言葉が違います' }, 401);
+      if (!env.ACCESS_KEY) return json({ error: 'ACCESS_KEY を設定してください' }, 500);
+      if (requestAccessKey(request) !== env.ACCESS_KEY) return json({ error: '合言葉が違います' }, 401);
       if (url.pathname === '/api/bidnote-discover' && request.method === 'GET') {
       if (!env.STORE) return json({ error: 'KV（STORE）が未設定です' }, 500);
       const deals = JSON.parse((await env.STORE.get('keepa-deals')) || '{"items":[]}');

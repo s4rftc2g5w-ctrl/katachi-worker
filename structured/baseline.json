@@ -5,17 +5,17 @@
     {
       "name": "HTML",
       "file": "ui/HTML.html",
-      "sha256": "ae0a25e481aee3b5a80bf07672dba61d4949f10af849a613c78872b09ae78d5a"
+      "sha256": "4c472fb2b2757fcd51cd16f3d8933150a66376284f20d978ecf15b39197d8aac"
     },
     {
       "name": "STATUS_HTML",
       "file": "ui/STATUS_HTML.html",
-      "sha256": "f7c6c47ec6f6a257c3deb4dc0c7a7673874cff5fc382c0272dbc499777f35d14"
+      "sha256": "05c62b979f2ecf3c1dc9193ea33fad11b7b245bc96f731664feeb1dd9fb04b3d"
     },
     {
       "name": "unifiedHTML",
       "file": "ui/unifiedHTML.html",
-      "sha256": "cdb96c9815fd4a2f4a380ee2e2fd7b6e0b0d9ce3775341909545727fc7a2f86c"
+      "sha256": "b1f97d085f491283523b05c4a6445e819cff8ac1d02e0b9208144b1fddc6a77e"
     }
   ]
 }

@@ -22,3 +22,5 @@ npm run verify
 ## 現在地
 
 分離前後で画面内容が同一であることと、生成Workerの構文を確認しています。本番公開、Cloudflare設定、Cron、KVは変更していません。候補台帳v1.5.81は試作であり、この正本にはまだ統合していません。
+
+作業ブランチでは、APIの合言葉をURLの `?k=` に付けず `Authorization: Bearer` ヘッダーで送ります。`/api/bidnote-discover` も同じ認証を必須にしています。本番へはまだ反映していません。

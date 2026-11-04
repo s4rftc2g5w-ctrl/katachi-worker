@@ -1514,7 +1514,7 @@
       try {
         localStorage.setItem("kataochi-key", key)
       } catch (e) {}
-      autoShop = shop, $("#autoRes").innerHTML = '<p class="hint">取得中…</p>', fetch("/api/" + (0 === shop ? "rakuten" : "yahoo") + "?q=" + encodeURIComponent(q) + "&k=" + encodeURIComponent(key) + "&min=" + encodeURIComponent(num($("#auto-min").value)) + "&acc=" + ($("#auto-acc").checked ? "1" : "0") + "&condition=" + (draft.condition === "used" ? "used" : "new")).then(function(r) {
+      autoShop = shop, $("#autoRes").innerHTML = '<p class="hint">取得中…</p>', fetch("/api/" + (0 === shop ? "rakuten" : "yahoo") + "?q=" + encodeURIComponent(q) + "&min=" + encodeURIComponent(num($("#auto-min").value)) + "&acc=" + ($("#auto-acc").checked ? "1" : "0") + "&condition=" + (draft.condition === "used" ? "used" : "new"), { headers: { "Authorization": "Bearer " + key } }).then(function(r) {
         return r.json()
       }).then(function(j) {
         if (j.error) return $("#autoRes").innerHTML = "", void toast("取得できませんでした：" + j.error);
@@ -1541,8 +1541,9 @@
   }
 
   function api(path, opt) {
-    var sep = path.indexOf("?") < 0 ? "?" : "&";
-    return fetch("/api/" + path + sep + "k=" + encodeURIComponent(apiKey()), opt).then(function(r) {
+    opt = opt || {};
+    opt.headers = Object.assign({}, opt.headers || {}, { "Authorization": "Bearer " + apiKey() });
+    return fetch("/api/" + path, opt).then(function(r) {
       return r.text().then(function(t) {
         var j;
         try {

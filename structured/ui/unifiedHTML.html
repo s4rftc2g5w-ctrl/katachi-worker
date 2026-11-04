@@ -531,7 +531,9 @@ textarea.out{width:100%;min-height:90px;font-size:13px;background:var(--field);b
     var btn = $("loadDiscover");
     if (btn.disabled) return;
     btn.disabled = true; btn.textContent = "読込中…"; $("discoverStatus").textContent = "型落ちアプリから候補を確認しています。";
-    fetch("/api/bidnote-discover", { headers:{ "accept":"application/json" }, cache:"no-store" })
+    var discoverKey = syncKey();
+    if (!discoverKey) { btn.disabled = false; btn.textContent = "候補を読み込む"; $("discoverStatus").textContent = "先に保存・同期で合言葉を入力してください。"; $("discoverStatus").dataset.kind = "error"; return; }
+    fetch("/api/bidnote-discover", { headers:{ "accept":"application/json", "Authorization":"Bearer " + discoverKey }, cache:"no-store" })
       .then(function(res){ if (!res.ok) throw new Error("HTTP " + res.status); return res.json(); })
       .then(function(data){ if (!data || data.ok === false) throw new Error((data && data.error) || "取得できませんでした"); renderDiscover(data); lastDiscoverRead = Date.now(); })
       .catch(function(err){ $("discoverStatus").textContent = "候補を取得できませんでした。通信を確認して、もう一度押してください。（" + err.message + "）"; $("discoverStatus").dataset.kind = "error"; })
