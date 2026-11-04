@@ -441,6 +441,7 @@ textarea.out{width:100%;min-height:90px;font-size:13px;background:var(--field);b
   var API_URL = "/unified-api/data";
   var HEALTH_URL = "/unified-api/health";
   var syncing = false, syncAgain = false;
+  var recoveredApiKey = false;
   var DIRTY_KEY = "bid-note-sync-dirty-v1", LAST_SYNC_KEY = "bid-note-last-sync-v1";
   var discoveryOrigin = null, lastDiscoverRead = 0;
   function dirtyToken(){ try { return localStorage.getItem(DIRTY_KEY) || ""; } catch(e) { return "unsaved"; } }
@@ -931,7 +932,19 @@ textarea.out{width:100%;min-height:90px;font-size:13px;background:var(--field);b
   /* ---- サーバー同期（localStorageを残し、サーバーとは統合） ---- */
   function syncMessage(text, kind){ var el = $("syncStatus"); el.textContent = text; el.setAttribute("data-kind", kind || ""); }
   function syncKey(){ return ($("apiKey").value || "").trim(); }
-  function storedApiKey(){ try { return localStorage.getItem(API_KEY) || ""; } catch (e) { return ""; } }
+  function storedApiKey(){
+    try {
+      var current = localStorage.getItem(API_KEY) || "";
+      if (current) return current;
+      var oldKeys = ["bid-note-api-key-v1", "kataochi-key"];
+      for (var i = 0; i < oldKeys.length; i++) {
+        if (oldKeys[i] === API_KEY) continue;
+        var oldValue = localStorage.getItem(oldKeys[i]) || "";
+        if (oldValue) { localStorage.setItem(API_KEY, oldValue); recoveredApiKey = true; return oldValue; }
+      }
+      return "";
+    } catch (e) { return ""; }
+  }
   function saveSyncSettings(quiet){
     try {
       var k = syncKey();
@@ -1027,6 +1040,7 @@ textarea.out{width:100%;min-height:90px;font-size:13px;background:var(--field);b
   }
 
   $("apiKey").value = storedApiKey();
+  if (recoveredApiKey) syncMessage("以前の保存場所から合言葉を復元しました。接続確認を押してください", "ok");
   try { $("autoSync").checked = localStorage.getItem(AUTO_KEY) === "1"; } catch (e) {}
   $("saveSyncKey").addEventListener("click", function(){ saveSyncSettings(false); queueAutoSync(false); });
   $("forgetKey").addEventListener("click", function(){ $("apiKey").value = ""; saveSyncSettings(true); syncMessage("この端末から合言葉を削除しました", "ok"); });
