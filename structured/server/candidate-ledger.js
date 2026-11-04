@@ -22,8 +22,8 @@ function candidateIdentity(item) {
 
 function candidateDecision(item) {
   const price = candidateNumber(item.price != null ? item.price : item.eff);
-  const sell = candidateNumber(item.sell != null ? item.sell : item.market);
-  const cashProfit = candidateNumber(item.cashProfit != null ? item.cashProfit : item.net);
+  const sell = candidateNumber(item.sell != null ? item.sell : (item.market != null ? item.market : item.kv && item.kv.sell));
+  const cashProfit = candidateNumber(item.cashProfit != null ? item.cashProfit : (item.net != null ? item.net : item.kv && item.kv.net));
   const cashMargin = price > 0 && cashProfit != null ? cashProfit / price * 100 : null;
   const mercariCount = Math.max(0, Number(item.mercariCount || item.soldCount || 0) || 0);
   const humanConfirmed = item.humanConfirmed === true;
@@ -85,4 +85,51 @@ function candidateTop(ledger, limit = 3) {
     .filter(candidate => candidate.latest && candidate.latest.numericReady)
     .sort((a, b) => Number(b.latest.cashProfit) - Number(a.latest.cashProfit) || Number(b.latest.cashMargin) - Number(a.latest.cashMargin))
     .slice(0, Math.max(1, Math.min(3, Number(limit) || 3)));
+}
+
+async function candidateIndexPrefix(id) {
+  const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(id));
+  return 'candidate-index-v1:' + Array.from(new Uint8Array(bytes), byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+async function readLatestCandidate(env, id) {
+  const prefix = await candidateIndexPrefix(id);
+  const page = await env.STORE.list({prefix: prefix + ':', limit: 1});
+  if (!page.keys.length) return null;
+  const value = await env.STORE.get(page.keys[0].name);
+  if (value === null) throw new Error('候補索引を取得できませんでした');
+  const candidate = JSON.parse(value);
+  if (candidate.id !== id) throw new Error('候補索引の識別子が一致しません');
+  return candidate;
+}
+
+async function saveCandidateBatch(env, source, items, observedAt) {
+  if (!env.STORE || !Array.isArray(items) || !items.length) return {saved: 0};
+  const at = observedAt || new Date().toISOString();
+  if (!Number.isFinite(Date.parse(at))) throw new Error('候補の観測日時が不正です');
+  const journalId = crypto.randomUUID();
+  await env.STORE.put('candidate-journal-v1:' + at + ':' + journalId, JSON.stringify({schemaVersion: 1, journalId, source, at, items}));
+  let saved = 0;
+  for (const raw of items) {
+    const id = candidateIdentity(raw);
+    if (!id) continue;
+    const previous = await readLatestCandidate(env, id);
+    const ledger = {updatedAt: previous && previous.lastSeenAt, candidates: previous ? {[id]: previous} : {}};
+    const candidate = applyCandidateObservation(ledger, source, raw, at);
+    if (!candidate || candidate !== ledger.candidates[id] || candidate.lastSeenAt !== at) continue;
+    const prefix = await candidateIndexPrefix(id);
+    const reverseTime = String(9999999999999 - Date.parse(at)).padStart(13, '0');
+    await env.STORE.put(prefix + ':' + reverseTime + ':' + journalId, JSON.stringify({...candidate, history: candidate.history.slice(-1)}));
+    await env.STORE.put('candidate-directory-v1:' + prefix.slice('candidate-index-v1:'.length), id);
+    saved++;
+  }
+  return {saved, journalId};
+}
+
+async function recordCandidateBatch(env, source, items, observedAt) {
+  try { return await saveCandidateBatch(env, source, items, observedAt); }
+  catch (error) {
+    console.error(JSON.stringify({event: 'candidate-ledger-error', source, message: String(error && error.message || error)}));
+    return {saved: 0, error: String(error && error.message || error)};
+  }
 }

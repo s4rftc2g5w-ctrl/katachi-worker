@@ -870,6 +870,7 @@ async function runScan(env, origin) {
   } catch (e) {}
   const out = { at: new Date().toISOString(), items: top.concat(ranked.slice(15)), errors, usedExcluded, offTopic, keepa: kinfo, keywords: kws, minPrice: min, stateInfo, fetchedCount: all.length };
   await env.STORE.put('scan-results', JSON.stringify(out));
+  out.ledger = await recordCandidateBatch(env, 'scan', out.items, out.at);
   const fresh = (kinfo.used ? top.filter((x) => x.kv && (x.kv.level === 'ok' || x.kv.sure)) : top.slice(0, 3)).slice(0, 5).filter((x) => !prevUrls.has(x.url));
   if (env.DISCORD_WEBHOOK && fresh.length) {
     try {
@@ -930,7 +931,10 @@ async function runDeals(env, opt) {
   }
   out.items.sort((a, b) => (b.drop || 0) - (a.drop || 0) || (a.rank || 1e9) - (b.rank || 1e9));
   out.items = out.items.slice(0, s.keep);
-  if (env.STORE) await env.STORE.put('keepa-deals', JSON.stringify(out));
+  if (env.STORE) {
+    await env.STORE.put('keepa-deals', JSON.stringify(out));
+    out.ledger = await recordCandidateBatch(env, 'keepa-deals', out.items, out.at);
+  }
   return out;
 }
 
@@ -1156,6 +1160,7 @@ async function runDig(env, origin, o) {
     for (const k of keys.slice(80)) delete all[k];
     await env.STORE.put('dig-results', JSON.stringify(all));
   }
+  out.ledger = await recordCandidateBatch(env, 'yahoo-dig', out.items, out.at);
   return out;
 }
 
@@ -1240,6 +1245,7 @@ async function runDead(env, origin, o) {
     await env.STORE.put('dig-results', JSON.stringify(all));
     try { const lg = JSON.parse((await env.STORE.get('dead-log')) || '[]'); lg.unshift({ at: out.at, kw: out.kw, fetched: out.fetched, sale: out.sale, checked: out.checked, hit: out.items.length, drop: out.drop, errors: out.errors }); await env.STORE.put('dead-log', JSON.stringify(lg.slice(0, 50))); } catch (e) {}
   }
+  out.ledger = await recordCandidateBatch(env, 'rakuten-deadstock', out.items, out.at);
   return out;
 }
 
