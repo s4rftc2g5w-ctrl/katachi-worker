@@ -1,15 +1,17 @@
 const fs = require('node:fs');
 
+const vm = require('node:vm');
+const assert = require('node:assert/strict');
 const html = fs.readFileSync('structured/ui/unifiedHTML.html', 'utf8');
-for (const marker of [
-  '"bid-note-api-key-v1", "kataochi-key"',
-  'localStorage.setItem(API_KEY, oldValue)',
-  '以前の保存場所から合言葉を復元しました'
-]) {
-  if (!html.includes(marker)) throw new Error(`Missing safe API-key migration step: ${marker}`);
+const source = html.slice(html.indexOf('  function storedApiKey(){'), html.indexOf('  function saveSyncSettings('));
+for (const current of ['', 'test-current']) {
+  const reads = [];
+  const context = { API_KEY: 'test-current-slot', localStorage: {
+    getItem(key) { reads.push(key); return key === 'test-current-slot' ? current : 'test-other-account'; },
+    setItem() { throw Error('Reading credentials must not write storage'); }
+  }};
+  vm.createContext(context);
+  assert.equal(vm.runInContext(source + '\nstoredApiKey()', context), current);
+  assert.deepEqual(reads, ['test-current-slot']);
 }
-if (/removeItem\(oldKeys\[i\]\)/.test(html)) {
-  throw new Error('Legacy API-key storage must remain until recovery is verified');
-}
-
-console.log('PASS: saved API key is copied from legacy storage without deleting the source');
+console.log('PASS: credential lookup does not import other credentials or rewrite storage');

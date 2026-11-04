@@ -2,6 +2,12 @@
 
 公開中の v1.5.80 を起点に、画面とサーバー処理を分けて管理するための正本です。
 
+## 通常利用の入口（PC・iPhone共通）
+
+[公開版の統合画面](https://katachi.5bkj2n54ch.workers.dev/unified) を使用します。
+`structured/ui/unifiedHTML.html` をファイルとして直接開いても公開サーバーへ同期できません。これは編集用ファイルです。
+2026-11-04、本人からPC・iPhoneの接続復旧を確認。合言葉の再設定は不要でした。
+
 ## 構成
 
 - `structured/worker.template.js` — Cloudflare Workerの処理。HTML部分はプレースホルダーです。
