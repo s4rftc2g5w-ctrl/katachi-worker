@@ -1079,7 +1079,7 @@ async function marketCheck(env, origin, p) {
 
 // Yahoo!深掘り（v1.5.51）：Yahoo!のセール中の新品をキーワードごとに集め、通常価格より大きく安く、
 // しかも他のYahoo!出品者・楽天の相場より安い「この店だけ安い」商品だけ残す。最後のメルカリ確認は拡張で人が押す。
-const DIG_KW = ['ワイヤレスイヤホン', 'ヘッドホン', 'Bluetoothスピーカー', 'ゲーミングマウス', 'ゲーミングキーボード', 'ゲーミングヘッドセット', 'USBマイク', 'Webカメラ', 'モバイルバッテリー', 'スマートウォッチ', 'ドライヤー', 'ヘアアイロン', '電動歯ブラシ', 'シェーバー', '美顔器', '電気ケトル', 'ハンディファン', 'ゲームコントローラー', 'SSD', 'キャプチャーボード'];
+const DIG_KW = ['ワイヤレスイヤホン', 'ヘッドホン', 'Bluetoothスピーカー', 'ゲーミングマウス', 'ゲーミングキーボード', 'ゲーミングヘッドセット', 'USBマイク', 'Webカメラ', 'モバイルバッテリー', 'スマートウォッチ', 'ドライヤー', 'ヘアアイロン', '電動歯ブラシ', 'シェーバー', '美顔器', '電気ケトル', 'ハンディファン', 'ゲームコントローラー', 'SSD', 'キャプチャーボード', 'ベイブレード', 'プラモデル', 'トミカ', 'レゴ', 'ラベルライター', '電動工具', '無線LANルーター', 'ポータブルSSD'];
 const DIG_NG = /中古|ジャンク|訳あり|わけあり|アウトレット|展示品|再生品|整備済|リファービッシュ|開封品|箱潰れ|箱つぶれ|並行輸入|海外版|互換|交換用|替え|替刃|部品|パーツ|ケースのみ|カバーのみ|専用ケース|保護ケース|保護カバー|フィルム|変換アダプタ|イヤーピース|イヤーパッド|ストラップ|単品販売|他社|時間限定|特典あり|\d点購入|\d点で|\d個購入|1点あたり|１点あたり|まとめ買い|クーポン利用で|クーポンで|\d個セット|\d点セット|予約|取り寄せ|取寄|受注生産|福袋|まとめ売り|セット売り|ノーブランド|汎用/;
 async function yahooRaw(env, params) {
   const p = new URLSearchParams(Object.assign({ appid: env.YAHOO_APP_ID, results: '100', condition: 'new', in_stock: 'true' }, params));
@@ -1362,30 +1362,43 @@ async function runEdionPatrol(env, opt = {}) {
   try { await env.STORE.put('edion-outlet-seen', JSON.stringify(seen)); } catch (e) {} if (cur.length) try { await env.STORE.put('edion-outlet-items', JSON.stringify({ at: new Date().toISOString(), items: cur })); } catch (e) {}
   return { newItems: newItems.length, errors, source: pushed ? String(opt.from || '外部') : 'cloudflare' };
 }
+function digShouldNotify(previous, item, now) {
+  const at = typeof previous === 'number' ? previous : previous && previous.at;
+  if (!at || now - at >= 7 * 86400000) return true;
+  // 旧通知履歴は価格がないため、期限切れまで従来の抑制を維持。
+  return typeof previous === 'object' && previous.price > 0 && item.price > 0 &&
+    previous.ship === !!item.ship && now - at >= 24 * 3600000 &&
+    previous.price - item.price >= Math.max(500, previous.price * 0.05);
+}
 async function runDigCron(env, ev) {
   const night = new Date(ev.scheduledTime).toISOString().slice(0, 10);
   const st = JSON.parse((await env.STORE.get('dig-cron')) || '{}');
   if (st.night !== night) { st.night = night; st.idx = 0; st.found = 0; }
   const sent = st.sent || {};
   const cut = Date.now() - 7 * 86400000; // 同じ商品の通知は7日に1回
-  for (const u of Object.keys(sent)) if (sent[u] < cut) delete sent[u];
+  for (const u of Object.keys(sent)) if ((typeof sent[u] === 'number' ? sent[u] : sent[u].at) < cut) delete sent[u];
   let cfg = {}; try { const s = await loadState(env); cfg = (s && s.settings && s.settings.dig) || {}; } catch (e) {}
-  const kws = Array.isArray(cfg.kw) && cfg.kw.length ? cfg.kw : DIG_KW;
+  const custom = Array.isArray(cfg.kw) ? [...new Set(cfg.kw.filter(x => typeof x === 'string' && x.trim()).map(x => x.trim()))] : [];
+  const kws = custom.length ? custom : DIG_KW;
   if (st.idx >= kws.length) return { skipped: '今夜の分は終了', night, idx: st.idx };
-  const kw = kws[st.idx];
+  const cursor = Number.isSafeInteger(st.cursor) && st.cursor >= 0 ? st.cursor : st.idx;
+  const kw = kws[cursor % kws.length];
+  st.cursor = (cursor + 1) % kws.length;
   st.idx++;
   await env.STORE.put('dig-cron', JSON.stringify(Object.assign(st, { sent })));
   const r = await runDig(env, '', { kw, min: cfg.min || 4000, max: cfg.max || 15000, off: cfg.off || 35 });
-  const hot = (r.items || []).filter((it) => it.lv === 'only' && it.brand && !sent[it.url]);
-  if (hot.length && env.DISCORD_WEBHOOK) {
-    const body = '【Yahoo!深掘り】🔥 この店だけ安い（「' + kw + '」）\n' + hot.slice(0, 4).map((it) =>
+  const hot = (r.items || []).filter((it) => it.lv === 'only' && it.brand && digShouldNotify(sent[it.url], it, Date.now()));
+  const selected = hot.slice(0, 3);
+  let notified = 0;
+  if (selected.length && env.DISCORD_WEBHOOK) {
+    const body = '【Yahoo!深掘り】要確認・他店より安い候補（「' + kw + '」）\n' + selected.map((it) =>
       '・［' + it.brand + '］' + it.name.slice(0, 60) + '\n　Yahoo! ¥' + it.price.toLocaleString('ja-JP') + (it.ship ? '' : '＋送料') + '（通常¥' + it.base.toLocaleString('ja-JP') + '・' + it.off + '%OFF）／他店相場 ¥' + Number(it.mkt || 0).toLocaleString('ja-JP') + '（' + it.mktN + '件）より' + it.gap + '%安い\n　Yahoo!：<' + it.url + '>\n　メルカリ売り切れ：<' + mercariSoldUrl(mercariQ(it.name, it.brand), it.price + (it.ship ? 0 : 800)) + '>').join('\n') +
-      '\n→ メルカリで新品の売り切れ価格を見て、良さそうならアプリ「今日の候補」で「相場を確認」→ ⭐/🟢だけ仕入れ：<' + (env.APP_URL || APP_URL) + '>';
-    try { const d = await fetch(env.DISCORD_WEBHOOK, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ content: body.slice(0, 1900) }) }); if (d.ok) hot.forEach((it) => { sent[it.url] = Date.now(); }); } catch (e) {}
+      '\n→ 販売相場・利益は未確認。新品売り切れ3件以上を確認し、仕入額の25%・利益1,000円・予備費1,000円で判定：<' + (env.APP_URL || APP_URL).replace(/\/$/, '').replace(/\/unified$/, '') + '/unified>';
+    try { const d = await fetch(env.DISCORD_WEBHOOK, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ content: body.slice(0, 1900) }) }); if (d.ok) { notified = selected.length; selected.forEach((it) => { sent[it.url] = { at: Date.now(), price: it.price, ship: !!it.ship }; }); } } catch (e) {}
   }
   st.found = (st.found || 0) + hot.length;
-  await env.STORE.put('dig-cron', JSON.stringify(Object.assign(st, { sent, last: { at: new Date().toISOString(), kw, fetched: r.fetched, sale: r.sale, items: (r.items || []).length, hot: hot.length, errors: r.errors } })));
-  return { night, kw, idx: st.idx, of: kws.length, fetched: r.fetched, sale: r.sale, items: (r.items || []).length, hot: hot.length, errors: r.errors };
+  await env.STORE.put('dig-cron', JSON.stringify(Object.assign(st, { sent, last: { at: new Date().toISOString(), kw, fetched: r.fetched, sale: r.sale, items: (r.items || []).length, hot: hot.length, notified, errors: r.errors } })));
+  return { night, kw, idx: st.idx, of: kws.length, fetched: r.fetched, sale: r.sale, items: (r.items || []).length, hot: hot.length, notified, errors: r.errors };
 }
 
 // Keepa Tracking：Amazonが仕入上限以下になったらKeepaからWebhook→Discord
